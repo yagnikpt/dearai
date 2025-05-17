@@ -3,6 +3,8 @@
 # dependencies
 node_modules/
 
+.vscode/
+
 # Expo
 .expo/
 dist/
@@ -36,4 +38,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+db.sqlite
+
 app-example
+
+/android
+/ios
