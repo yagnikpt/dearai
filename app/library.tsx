@@ -77,6 +77,9 @@ export default function LibraryScreen() {
 		(props: BottomSheetBackdropProps) => (
 			<BottomSheetBackdrop
 				{...props}
+				style={{
+					backdropFilter: "blur(3px)",
+				}}
 				appearsOnIndex={0}
 				disappearsOnIndex={-1}
 				pressBehavior={"close"}

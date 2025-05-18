@@ -3,6 +3,7 @@ import BandageIcon from "@/assets/icons/bandage.svg";
 import BookOpenIcon from "@/assets/icons/book-open.svg";
 import PaperClipIcon from "@/assets/icons/paper-clip.svg";
 import SpeakerWaveIcon from "@/assets/icons/speaker-wave.svg";
+import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import { createChat } from "@/tools/chat-store";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
@@ -18,8 +19,7 @@ import {
 	View,
 } from "react-native";
 import {
-	KeyboardAvoidingView,
-	useKeyboardHandler,
+	useKeyboardHandler
 } from "react-native-keyboard-controller";
 import Animated, {
 	Easing,
@@ -48,7 +48,8 @@ export default function HomeScreen() {
 	const [input, setInput] = useState("");
 	const opacity = useSharedValue(1);
 	const router = useRouter();
-	const db = useSQLiteContext(); // Get DB instance
+	const db = useSQLiteContext();
+	const { height } = useGradualAnimation();
 
 	const getGreeting = () => {
 		const hour = new Date().getHours();
@@ -61,6 +62,11 @@ export default function HomeScreen() {
 		return "evening";
 	};
 
+	const keyboardPadding = useAnimatedStyle(() => {
+    return {
+      height: height.value,
+    };
+  }, []);
 	const animatedStyles = useAnimatedStyle(() => {
 		return {
 			opacity: opacity.value,
@@ -97,7 +103,7 @@ export default function HomeScreen() {
 	async function handleSubmit() {
 		try {
 			if (input.length === 0) return;
-			const id = await createChat(db, input.substring(0, 20)); // Pass db instance
+			const id = await createChat(db, input.substring(0, 20));
 			router.push({
 				pathname: `/chat/[id]`,
 				params: { initial: input, id },
@@ -109,11 +115,8 @@ export default function HomeScreen() {
 	}
 
 	return (
-		<KeyboardAvoidingView
-			behavior="padding"
+		<View
 			style={{ flex: 1 }}
-			// contentContainerStyle={{ flex: 1 }}
-			keyboardVerticalOffset={-10}
 		>
 			<ImageBackground
 				source={require("../assets/images/bg-4.png")}
@@ -295,7 +298,8 @@ export default function HomeScreen() {
 					</Text>
 				</View>
 			</SafeAreaView>
-		</KeyboardAvoidingView>
+			<Animated.View style={keyboardPadding} />
+		</View>
 	);
 }
 
