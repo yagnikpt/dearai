@@ -5,7 +5,6 @@ import {
 	DefaultTheme,
 	ThemeProvider,
 } from "@react-navigation/native";
-import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import type * as SQLite from "expo-sqlite";
 import { SQLiteProvider } from "expo-sqlite";
@@ -66,14 +65,14 @@ async function initializeDatabaseSchema(db: SQLite.SQLiteDatabase) {
 
 export default function RootLayout() {
 	const colorScheme = useColorScheme();
-	const [loaded] = useFonts({
-		Geist: require("../assets/fonts/Geist.ttf"),
-		PlayfairDisplay: require("../assets/fonts/PlayfairDisplay.ttf"),
-	});
+	// const [loaded] = useFonts({
+	// 	Geist: require("../assets/fonts/Geist.ttf"),
+	// 	PlayfairDisplay: require("../assets/fonts/PlayfairDisplay.ttf"),
+	// });
 
-	if (!loaded) {
-		return null;
-	}
+	// if (!loaded) {
+	// 	return null;
+	// }
 
 	return (
 		// <StrictMode>
