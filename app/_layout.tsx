@@ -96,6 +96,7 @@ export default function RootLayout() {
 							name="library"
 						/>
 						<Stack.Screen name="chat/[id]" />
+						<Stack.Screen name="voice/[id]" />
 						<Stack.Screen name="+not-found" />
 					</Stack>
 					<StatusBar style="dark" translucent animated />

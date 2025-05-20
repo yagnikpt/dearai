@@ -6,6 +6,8 @@ import { addMessage, getConversation } from "@/tools/chat-store";
 import type { Conversation } from "@/types";
 import { generateAPIUrl } from "@/utils";
 import { useChat } from "@ai-sdk/react";
+import { defaultChatStore } from "ai";
+import * as Crypto from "expo-crypto";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { fetch as expoFetch } from "expo/fetch";
@@ -22,7 +24,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function Users() {
+export default function Chat() {
 	const { id, initial } = useLocalSearchParams<{
 		id: string;
 		initial?: string;
@@ -45,18 +47,30 @@ export default function Users() {
 
 	const {
 		messages,
-		error,
-		handleInputChange,
 		input,
-		handleSubmit,
+		error,
 		setMessages,
+		handleSubmit,
+		handleInputChange,
 	} = useChat({
+		chatStore: defaultChatStore({
+			api: generateAPIUrl("/api/chat"),
+			fetch: expoFetch as unknown as typeof globalThis.fetch,
+			generateId: Crypto.randomUUID,
+		}),
 		initialInput: initial,
-		fetch: expoFetch as unknown as typeof globalThis.fetch,
-		api: generateAPIUrl("/api/chat"),
 		onError: (error) => console.error(error),
-		onFinish: async (message) => {
-			await addMessage(db, id, message.content, "assistant");
+		onFinish: async ({ message }) => {
+			let content = "";
+			if (message.parts && Array.isArray(message.parts)) {
+				for (const part of message.parts) {
+					if (part.type === "text" && part.text) {
+						content += part.text;
+					}
+				}
+			}
+
+			await addMessage(db, id, content, message.role);
 		},
 	});
 
@@ -66,6 +80,8 @@ export default function Users() {
 				if (initial) {
 					await addMessage(db, id, initial, "user");
 					handleSubmit();
+					const data = await getConversation(db, id);
+					setConversationData(data);
 				} else {
 					const data = await getConversation(db, id);
 					if (data) {
@@ -75,7 +91,12 @@ export default function Users() {
 							const formatedMessages = initialMessages.map((message: any) => ({
 								id: message.id,
 								role: message.role,
-								content: message.content,
+								parts: [
+									{
+										type: "text",
+										text: message.content,
+									},
+								],
 							}));
 							setMessages(formatedMessages);
 						}
@@ -93,16 +114,6 @@ export default function Users() {
 			console.error("Error loading conversation:", error);
 		}
 	}, [id, initial]);
-
-	if (loading) {
-		return (
-			<SafeAreaView
-				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-			>
-				<Spinner size={50} />
-			</SafeAreaView>
-		);
-	}
 
 	if (initalError) {
 		return (
@@ -123,11 +134,21 @@ export default function Users() {
 			</SafeAreaView>
 		);
 
+	if (loading) {
+		return (
+			<SafeAreaView
+				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+			>
+				<Spinner size={50} />
+			</SafeAreaView>
+		);
+	}
+
 	return (
 		<KeyboardAvoidingView
-			contentContainerStyle={{ flex: 1 }}
+			// contentContainerStyle={{ flex: 1 }}
 			style={{ flex: 1 }}
-			behavior="position"
+			behavior="padding"
 			keyboardVerticalOffset={-20}
 		>
 			<SafeAreaView style={{ flex: 1, backgroundColor: "#fcf5f2" }}>
@@ -135,7 +156,7 @@ export default function Users() {
 					style={{
 						flexDirection: "row",
 						justifyContent: "space-between",
-						padding: 16,
+						padding: 20,
 					}}
 				>
 					<Pressable onPress={handleBack}>
@@ -157,14 +178,14 @@ export default function Users() {
 						</Text>
 					</View>
 					<Pressable onPress={handleHomePage}>
-						<SquarePenIcon width={24} height={24} stroke={"#444"} />
+						<SquarePenIcon width={22} height={22} stroke={"#444"} />
 					</Pressable>
 				</View>
 
 				<ScrollView
 					style={{
 						flex: 1,
-						paddingHorizontal: 16,
+						paddingHorizontal: 20,
 						paddingTop: 16,
 						// paddingBottom: 200,
 					}}
@@ -186,11 +207,13 @@ export default function Users() {
 										fontFamily: "Geist",
 									}}
 								>
-									{m.content}
+									{m.parts.find((part) => part.type === "text")?.text}
 								</Text>
 							) : (
 								<View style={{ marginBottom: 24 }}>
-									<Markdown style={styles}>{m.content}</Markdown>
+									<Markdown style={styles}>
+										{m.parts.find((part) => part.type === "text")?.text}
+									</Markdown>
 								</View>
 							)}
 						</View>
@@ -201,7 +224,7 @@ export default function Users() {
 					style={{
 						position: "fixed",
 						bottom: 8,
-						marginHorizontal: 16,
+						marginHorizontal: 20,
 						borderRadius: 32,
 						padding: 8,
 						borderColor: "#ccc",

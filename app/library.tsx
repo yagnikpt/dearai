@@ -1,5 +1,10 @@
 import ChatBubbleIcon from "@/assets/icons/chat-bubble.svg";
-import { deleteChat, getAllConversations } from "@/tools/chat-store";
+import { useGradualAnimation } from "@/hooks/useGradualAnimation";
+import {
+	deleteChat,
+	getAllConversations,
+	renameChat,
+} from "@/tools/chat-store";
 import type { Conversation } from "@/types";
 import {
 	BottomSheetBackdrop,
@@ -9,7 +14,7 @@ import {
 	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { format } from "date-fns";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -20,9 +25,11 @@ import {
 	ScrollView,
 	StyleSheet,
 	Text,
+	TextInput,
 	View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
 export default function LibraryScreen() {
 	const [current, setCurrent] = useState<string | null>(null);
@@ -31,6 +38,14 @@ export default function LibraryScreen() {
 	const router = useRouter();
 	const db = useSQLiteContext();
 	const bottomSheetRef = useRef<BottomSheetModal>(null);
+	const renameSheetRef = useRef<BottomSheetModal>(null);
+	const { height } = useGradualAnimation();
+
+	const keyboardPadding = useAnimatedStyle(() => {
+		return {
+			height: height.value,
+		};
+	}, []);
 
 	async function fetchConversations() {
 		try {
@@ -69,17 +84,10 @@ export default function LibraryScreen() {
 		bottomSheetRef.current?.present();
 	}, []);
 
-	const handleDismiss = useCallback(() => {
-		setCurrent(null);
-	}, []);
-
 	const renderBackdrop = useCallback(
 		(props: BottomSheetBackdropProps) => (
 			<BottomSheetBackdrop
 				{...props}
-				style={{
-					backdropFilter: "blur(3px)",
-				}}
 				appearsOnIndex={0}
 				disappearsOnIndex={-1}
 				pressBehavior={"close"}
@@ -87,6 +95,23 @@ export default function LibraryScreen() {
 		),
 		[],
 	);
+
+	const handleRenameChat = async (id: string, newTitle: string) => {
+		try {
+			await renameChat(db, id, newTitle);
+			setConversations((prevConversations) =>
+				prevConversations.map((convo) =>
+					convo.id === id ? { ...convo, title: newTitle } : convo,
+				),
+			);
+		} catch (error) {
+			console.error("Error renaming conversation:", error);
+			Alert.alert("Error", "Could not delete the chat. Please try again.");
+		} finally {
+			renameSheetRef.current?.close();
+			bottomSheetRef.current?.close();
+		}
+	};
 
 	const formatDate = (dateString: string) => {
 		if (!dateString) return "N/A";
@@ -124,11 +149,12 @@ export default function LibraryScreen() {
 							<Text style={styles.emptySubText}>
 								Start a new conversation from the home screen!
 							</Text>
-							<Link href="/" asChild>
-								<Pressable style={styles.homeButton}>
-									<Text style={styles.homeButtonText}>Go to Home</Text>
-								</Pressable>
-							</Link>
+							<Pressable
+								onPress={() => router.replace("/")}
+								style={styles.homeButton}
+							>
+								<Text style={styles.homeButtonText}>Go to Home</Text>
+							</Pressable>
 						</View>
 					) : (
 						<ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -154,18 +180,36 @@ export default function LibraryScreen() {
 							))}
 						</ScrollView>
 					)}
+				</BottomSheetModalProvider>
+
+				<BottomSheetModalProvider>
 					<BottomSheetModal
 						ref={bottomSheetRef}
-						key="PoiDetailsSheet"
-						name="PoiDetailsSheet"
+						key="ActionsSheet"
+						name="ActionsSheet"
 						snapPoints={["20%"]}
 						enableDynamicSizing={false}
 						backdropComponent={renderBackdrop}
-						onDismiss={handleDismiss}
 					>
-						<BottomSheetView style={{ paddingBottom: 50 }}>
+						<BottomSheetView style={{ gap: 20, paddingTop: 20 }}>
 							<Pressable
-								style={{ padding: 20 }}
+								style={{ paddingHorizontal: 20 }}
+								onPress={() => {
+									renameSheetRef.current?.present();
+								}}
+							>
+								<Text
+									style={{
+										fontSize: 18,
+										color: "#2c3e50",
+										fontFamily: "Geist",
+									}}
+								>
+									Rename
+								</Text>
+							</Pressable>
+							<Pressable
+								style={{ paddingHorizontal: 20 }}
 								onPress={async () => {
 									if (current) await handleDeleteChat(current);
 									bottomSheetRef.current?.close();
@@ -183,8 +227,69 @@ export default function LibraryScreen() {
 							</Pressable>
 						</BottomSheetView>
 					</BottomSheetModal>
+
+					<BottomSheetModal
+						stackBehavior="replace"
+						ref={renameSheetRef}
+						key="RenameSheet"
+						name="RenameSheet"
+						snapPoints={["25%"]}
+						enableDynamicSizing={false}
+						backdropComponent={renderBackdrop}
+						// onDismiss={handleDismiss}
+					>
+						<BottomSheetView style={{ gap: 20, padding: 20 }}>
+							<TextInput
+								style={{
+									borderWidth: 1,
+									borderColor: "#ccc",
+									borderRadius: 8,
+									padding: 10,
+									fontSize: 16,
+									fontFamily: "Geist",
+								}}
+								defaultValue={
+									current
+										? conversations.find((p) => p.id === current)?.title || ""
+										: ""
+								}
+								placeholder="Enter new chat name"
+								placeholderTextColor="#aaa"
+								onSubmitEditing={async (e) => {
+									if (current)
+										await handleRenameChat(current, e.nativeEvent.text);
+								}}
+								autoFocus
+							/>
+							{/* <Pressable
+								style={{
+									backgroundColor: "#3498db",
+									paddingVertical: 12,
+									paddingHorizontal: 24,
+									borderRadius: 8,
+									alignItems: "center",
+									alignSelf: "flex-end",
+								}}
+								onPress={async () => {
+									if (current) await handleRenameChat(current);
+									renameSheetRef.current?.close();
+								}}
+							>
+								<Text
+									style={{
+										color: "#fff",
+										fontSize: 16,
+										fontFamily: "Geist",
+									}}
+								>
+									Rename
+								</Text>
+							</Pressable> */}
+						</BottomSheetView>
+					</BottomSheetModal>
 				</BottomSheetModalProvider>
 			</SafeAreaView>
+			<Animated.View style={keyboardPadding} />
 		</GestureHandlerRootView>
 	);
 }
@@ -264,7 +369,7 @@ const styles = StyleSheet.create({
 		fontWeight: "bold",
 	},
 	scrollViewContent: {
-		paddingHorizontal: 15,
+		paddingHorizontal: 20,
 		paddingVertical: 5,
 	},
 	conversationItem: {

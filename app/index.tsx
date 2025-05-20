@@ -5,12 +5,12 @@ import PaperClipIcon from "@/assets/icons/paper-clip.svg";
 import SpeakerWaveIcon from "@/assets/icons/speaker-wave.svg";
 import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import { createChat } from "@/tools/chat-store";
-import { Image } from "expo-image";
+import * as Crypto from "expo-crypto";
+import { Image, ImageBackground } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { useState } from "react";
 import {
-	ImageBackground,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -18,9 +18,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
-import {
-	useKeyboardHandler
-} from "react-native-keyboard-controller";
+import { useKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
 	Easing,
 	useAnimatedStyle,
@@ -63,10 +61,10 @@ export default function HomeScreen() {
 	};
 
 	const keyboardPadding = useAnimatedStyle(() => {
-    return {
-      height: height.value,
-    };
-  }, []);
+		return {
+			height: height.value,
+		};
+	}, []);
 	const animatedStyles = useAnimatedStyle(() => {
 		return {
 			opacity: opacity.value,
@@ -115,9 +113,7 @@ export default function HomeScreen() {
 	}
 
 	return (
-		<View
-			style={{ flex: 1 }}
-		>
+		<View style={{ flex: 1 }}>
 			<ImageBackground
 				source={require("../assets/images/bg-4.png")}
 				style={{
@@ -128,8 +124,7 @@ export default function HomeScreen() {
 					bottom: 0,
 					backgroundColor: "#fcf5f2",
 				}}
-				blurRadius={0}
-				resizeMode="cover"
+				contentFit="cover"
 			/>
 			<SafeAreaView style={styles.safeArea}>
 				<View style={styles.header}>
@@ -260,6 +255,9 @@ export default function HomeScreen() {
 								borderRadius: 9999,
 								boxShadow:
 									"0px 1px 3px 2px rgba(255, 221, 216, 1), 0px 2px 10px 6px rgba(255, 221, 216, 0.75)",
+							}}
+							onPress={() => {
+								router.push(`/voice/${Crypto.randomUUID()}`);
 							}}
 						>
 							<Image

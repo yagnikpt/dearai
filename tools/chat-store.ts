@@ -42,6 +42,18 @@ export async function deleteChat(db: SQLite.SQLiteDatabase, id: string) {
 	await db.runAsync(`DELETE FROM conversations WHERE id = ?`, id);
 }
 
+export async function renameChat(
+	db: SQLite.SQLiteDatabase,
+	id: string,
+	newTitle: string,
+) {
+	await db.runAsync(
+		`UPDATE conversations SET title = ? WHERE id = ?`,
+		newTitle,
+		id,
+	);
+}
+
 export async function getAllConversations(db: SQLite.SQLiteDatabase) {
 	const conversations = await db.getAllAsync(
 		`SELECT * FROM conversations ORDER BY created_at DESC`,
