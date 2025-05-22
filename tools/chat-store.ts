@@ -1,17 +1,21 @@
 import * as Crypto from "expo-crypto";
 import type * as SQLite from "expo-sqlite";
 
-export async function createChat(db: SQLite.SQLiteDatabase, title: string) {
-	const id = Crypto.randomUUID();
+export async function createChat(
+	db: SQLite.SQLiteDatabase,
+	title: string,
+	id?: string,
+) {
+	const columnid = id ?? Crypto.randomUUID();
 	await db.runAsync(
 		`
 		INSERT INTO conversations (id, title)
 		VALUES (?, ?)
 	`,
-		id,
+		columnid,
 		title,
 	);
-	return id;
+	return columnid;
 }
 
 export async function addMessage(
@@ -32,6 +36,13 @@ export async function addMessage(
 			message,
 			sender,
 		);
+		const msg = await db.getFirstAsync(
+			`
+			SELECT * FROM messages WHERE id = ?
+		`,
+			id,
+		);
+		return msg;
 	} catch (error) {
 		console.error("Error adding message:", error);
 		throw error;

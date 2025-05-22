@@ -1,5 +1,6 @@
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
 import ArrowUpIcon from "@/assets/icons/arrow-up.svg";
+import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
 import SquarePenIcon from "@/assets/icons/square-pen.svg";
 import Spinner from "@/components/ui/Spinner";
 import { addMessage, getConversation } from "@/tools/chat-store";
@@ -264,6 +265,16 @@ export default function Chat() {
 						}}
 					>
 						<ArrowUpIcon width={18} height={18} stroke={"#666"} />
+					</Pressable>
+					<Pressable
+						style={{
+							padding: 8,
+							borderRadius: 16,
+							backgroundColor: "#ddd",
+						}}
+						onPress={() => router.push(`/voice/${id}`)}
+					>
+						<AudioLinesIcon width={18} height={18} stroke={"#666"} />
 					</Pressable>
 				</View>
 			</SafeAreaView>

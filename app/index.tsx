@@ -1,7 +1,7 @@
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
+import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
 import BandageIcon from "@/assets/icons/bandage.svg";
 import BookOpenIcon from "@/assets/icons/book-open.svg";
-import PaperClipIcon from "@/assets/icons/paper-clip.svg";
 import SpeakerWaveIcon from "@/assets/icons/speaker-wave.svg";
 import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import { createChat } from "@/tools/chat-store";
@@ -250,14 +250,11 @@ export default function HomeScreen() {
 						</View>
 					</ScrollView>
 					<View style={styles.inputContainer}>
-						<Pressable
+						<View
 							style={{
 								borderRadius: 9999,
 								boxShadow:
 									"0px 1px 3px 2px rgba(255, 221, 216, 1), 0px 2px 10px 6px rgba(255, 221, 216, 0.75)",
-							}}
-							onPress={() => {
-								router.push(`/voice/${Crypto.randomUUID()}`);
 							}}
 						>
 							<Image
@@ -270,7 +267,7 @@ export default function HomeScreen() {
 								contentFit="cover"
 								transition={300}
 							/>
-						</Pressable>
+						</View>
 						<TextInput
 							placeholder="Type your thoughts here..."
 							style={styles.input}
@@ -279,21 +276,17 @@ export default function HomeScreen() {
 							onChangeText={(text) => setInput(text)}
 							onSubmitEditing={handleSubmit}
 						/>
-						<Pressable style={{ marginInlineEnd: 12 }} onPress={() => {}}>
-							<PaperClipIcon width={24} height={24} color={"#777"} />
+						<Pressable
+							style={{
+								padding: 8,
+								borderRadius: 16,
+								backgroundColor: "#f5e4e4",
+							}}
+							onPress={() => router.push(`/voice/${Crypto.randomUUID()}`)}
+						>
+							<AudioLinesIcon width={20} height={20} stroke={"#666"} />
 						</Pressable>
 					</View>
-					<Text
-						style={{
-							fontSize: 14,
-							color: "#999",
-							fontFamily: "Geist",
-							textAlign: "center",
-							marginVertical: -8,
-						}}
-					>
-						**Tap on AI to start speaking**
-					</Text>
 				</View>
 			</SafeAreaView>
 			<Animated.View style={keyboardPadding} />

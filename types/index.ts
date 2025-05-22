@@ -7,3 +7,12 @@ export interface Conversation {
 	created_at: string;
 	updated_at: string | null;
 }
+
+export interface Message {
+	id: string;
+	conversation_id: string;
+	role: "user" | "assistant";
+	content: string;
+	created_at: string;
+	updated_at: string | null;
+}
