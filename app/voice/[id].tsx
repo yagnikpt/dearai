@@ -18,19 +18,20 @@ import {
 	XMarkIcon,
 } from "react-native-heroicons/outline";
 import Animated, {
-	Easing,
 	FadeInDown,
 	LinearTransition,
 	useAnimatedStyle,
 	useSharedValue,
+	withSpring,
 	withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const CustomTransition = LinearTransition.easing(
-	Easing.inOut(Easing.ease),
-).duration(200);
+const CustomTransition = LinearTransition.springify()
+	.damping(10)
+	.stiffness(150)
+	.overshootClamping(1);
 
 export default function Voice() {
 	const { id } = useLocalSearchParams<{
@@ -44,11 +45,17 @@ export default function Voice() {
 	const db = useSQLiteContext();
 
 	const translateXCirc1 = useSharedValue(0);
-	const translateYCirc1 = useSharedValue(150);
+	const translateYCirc1 = useSharedValue(20);
+	const scaleCirc1 = useSharedValue(1);
+	const opacityCirc1 = useSharedValue(0.25);
 	const translateXCirc2 = useSharedValue(0);
-	const translateYCirc2 = useSharedValue(150);
+	const translateYCirc2 = useSharedValue(20);
+	const scaleCirc2 = useSharedValue(1);
+	const opacityCirc2 = useSharedValue(0.25);
 	const translateXCirc3 = useSharedValue(0);
-	const translateYCirc3 = useSharedValue(150);
+	const translateYCirc3 = useSharedValue(20);
+	const scaleCirc3 = useSharedValue(1);
+	const opacityCirc3 = useSharedValue(0.25);
 
 	useEffect(() => {
 		let interval: NodeJS.Timeout;
@@ -61,19 +68,71 @@ export default function Voice() {
 		}
 
 		const DURATION = 2000;
-		function animateCircs() {
+
+		function animateCircs(initial = false) {
 			const { randomX: rx1, randomY: ry1 } = getRandomXY();
 			const { randomX: rx2, randomY: ry2 } = getRandomXY();
 			const { randomX: rx3, randomY: ry3 } = getRandomXY();
-			translateXCirc1.value = withTiming(rx1, { duration: DURATION });
-			translateYCirc1.value = withTiming(ry1, { duration: DURATION });
-			translateXCirc2.value = withTiming(rx2, { duration: DURATION });
-			translateYCirc2.value = withTiming(ry2, { duration: DURATION });
-			translateXCirc3.value = withTiming(rx3, { duration: DURATION });
-			translateYCirc3.value = withTiming(ry3, { duration: DURATION });
+			if (!initial) {
+				translateXCirc1.value = withTiming(rx1, {
+					duration: DURATION,
+				});
+				translateYCirc1.value = withTiming(ry1, {
+					duration: DURATION,
+				});
+				translateXCirc2.value = withTiming(rx2, {
+					duration: DURATION,
+				});
+				translateYCirc2.value = withTiming(ry2, {
+					duration: DURATION,
+				});
+				translateXCirc3.value = withTiming(rx3, {
+					duration: DURATION,
+				});
+				translateYCirc3.value = withTiming(ry3, {
+					duration: DURATION,
+				});
+			} else {
+				scaleCirc1.value = withSpring(1.75, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+				opacityCirc1.value = withSpring(1, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+				scaleCirc2.value = withSpring(1.75, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+				opacityCirc2.value = withSpring(1, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+				scaleCirc3.value = withSpring(1.75, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+				opacityCirc3.value = withSpring(1, {
+					damping: 20,
+					stiffness: 150,
+					overshootClamping: true,
+					duration: DURATION + 400,
+				});
+			}
 		}
 
-		animateCircs();
+		animateCircs(true);
 		interval = setInterval(animateCircs, DURATION + 100);
 
 		return () => {
@@ -85,27 +144,27 @@ export default function Voice() {
 		transform: [
 			{ translateX: `${translateXCirc1.value}%` },
 			{ translateY: `${translateYCirc1.value}%` },
-			{ scale: 1.5 },
+			{ scale: scaleCirc1.value },
 		],
-		opacity: withTiming(1, { duration: 1000 }),
+		opacity: opacityCirc1.value,
 	}));
 
 	const circ2Styles = useAnimatedStyle(() => ({
 		transform: [
 			{ translateX: `${translateXCirc2.value}%` },
 			{ translateY: `${translateYCirc2.value}%` },
-			{ scale: 1.5 },
+			{ scale: scaleCirc2.value },
 		],
-		opacity: withTiming(1, { duration: 1000 }),
+		opacity: opacityCirc2.value,
 	}));
 
 	const circ3Styles = useAnimatedStyle(() => ({
 		transform: [
 			{ translateX: `${translateXCirc3.value}%` },
 			{ translateY: `${translateYCirc3.value}%` },
-			{ scale: 1.5 },
+			{ scale: scaleCirc3.value },
 		],
-		opacity: withTiming(1, { duration: 1000 }),
+		opacity: opacityCirc3.value,
 	}));
 
 	useSpeechRecognitionEvent("start", () => setRecognizing(true));
@@ -190,9 +249,9 @@ export default function Voice() {
 		checkIfExists();
 		// Automatically start listening when the screen loads
 		// and not already speaking (e.g. if TTS was triggered by a deep link with initial prompt)
-		// if (!isSpeaking) {
-		// 	handleStart();
-		// }
+		if (!isSpeaking) {
+			handleStart();
+		}
 
 		async function cleanup() {
 			if (recognizing) ExpoSpeechRecognitionModule.abort();
@@ -310,8 +369,9 @@ export default function Voice() {
 							alignItems: "center",
 						}}
 						onPress={() => {
-							if (messages.length) router.replace(`/chat/${id}`);
-							else router.replace("/");
+							if (messages.length)
+								router.replace(`/chat/${id}`, { dangerouslySingular: true });
+							else router.replace("/", { dangerouslySingular: true });
 						}}
 					>
 						<XMarkIcon strokeWidth={2} width={32} height={32} color="#444" />
@@ -348,7 +408,6 @@ export default function Voice() {
 								borderRadius: 9999,
 								position: "absolute",
 								transform: "scale(1) translateY(0) translateX(0)",
-								opacity: 0.25,
 								mixBlendMode: "multiply",
 								// right: 150,
 							},
@@ -364,7 +423,6 @@ export default function Voice() {
 								borderRadius: 9999,
 								position: "absolute",
 								transform: "scale(1) translateY(0) translateX(0)",
-								opacity: 0.25,
 								mixBlendMode: "multiply",
 								right: 150,
 							},
@@ -380,7 +438,6 @@ export default function Voice() {
 								borderRadius: 9999,
 								position: "absolute",
 								transform: "scale(1) translateY(0) translateX(0)",
-								opacity: 0.25,
 								mixBlendMode: "multiply",
 								left: 150,
 							},

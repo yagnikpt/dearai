@@ -90,15 +90,23 @@ export default function RootLayout() {
 							animation: "ios_from_right",
 						}}
 					>
-						<Stack.Screen name="index" />
+						<Stack.Screen dangerouslySingular singular name="index" />
 						<Stack.Screen
 							options={{ animation: "ios_from_left" }}
 							name="library"
 						/>
-						<Stack.Screen name="chat/[id]" />
+						<Stack.Screen
+							name="chat/[id]"
+							// getId={({ params }) => params?.id}
+							dangerouslySingular
+							singular
+						/>
 						<Stack.Screen
 							options={{ animation: "fade_from_bottom" }}
 							name="voice/[id]"
+							// getId={({ params }) => params?.id}
+							dangerouslySingular
+							singular
 						/>
 						<Stack.Screen name="+not-found" />
 					</Stack>
