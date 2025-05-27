@@ -1,5 +1,7 @@
+import { generateAPIUrl } from "@/utils";
 import * as Crypto from "expo-crypto";
 import type * as SQLite from "expo-sqlite";
+import { fetch } from "expo/fetch";
 
 export async function createChat(
 	db: SQLite.SQLiteDatabase,
@@ -51,6 +53,36 @@ export async function addMessage(
 
 export async function deleteChat(db: SQLite.SQLiteDatabase, id: string) {
 	await db.runAsync(`DELETE FROM conversations WHERE id = ?`, id);
+}
+
+export async function generateTitle(
+	db: SQLite.SQLiteDatabase,
+	id: string,
+	initial: string,
+) {
+	const res = await fetch(generateAPIUrl("/api/utility"), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			query: initial,
+			system_prompt: `
+							You are a highly capable language model tasked with generating a concise chat title (5-10 words) that accurately summarizes the main topic or intent of a user's query message. Analyze the query for key themes, intent, or specific topics, and create a title that is clear, specific, and engaging. Avoid vague or overly general titles. If the query is ambiguous, focus on the most prominent topic or question.
+
+Example: Query: "What are the best strategies for improving time management skills?" Chat Title: "Effective Time Management Strategies"
+						`,
+		}),
+	});
+
+	if (!res.ok) {
+		throw new Error("Failed to generate title");
+	}
+
+	const title = await res.text();
+	db.runAsync(`UPDATE conversations SET title = ? WHERE id = ?`, title, id);
+
+	return title.trim();
 }
 
 export async function renameChat(

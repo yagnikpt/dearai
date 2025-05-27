@@ -1,4 +1,9 @@
-import { addMessage, createChat, getConversation } from "@/tools/chat-store";
+import {
+	addMessage,
+	createChat,
+	generateTitle,
+	getConversation,
+} from "@/tools/chat-store";
 import type { Message } from "@/types";
 import { generateAPIUrl } from "@/utils";
 import { ImageBackground } from "expo-image";
@@ -9,8 +14,7 @@ import {
 	useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
 import { useSQLiteContext } from "expo-sqlite";
-import { fetch } from "expo/fetch";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
 	MicrophoneIcon,
@@ -22,16 +26,22 @@ import Animated, {
 	LinearTransition,
 	useAnimatedStyle,
 	useSharedValue,
-	withSpring,
 	withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import EventSource from "react-native-sse";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const CustomTransition = LinearTransition.springify()
 	.damping(10)
 	.stiffness(150)
 	.overshootClamping(1);
+
+const SENTENCE_SPLIT_REGEX = /(.+?[.!?\n])/g;
+// Fallback: if no punctuation, after how many words to attempt a split
+const MAX_WORDS_PER_CHUNK_FALLBACK = 25;
+// Timeout for flushing buffer if no sentence end found
+const BUFFER_FLUSH_TIMEOUT_MS = 2500; // 2.5 seconds
 
 export default function Voice() {
 	const { id } = useLocalSearchParams<{
@@ -43,6 +53,16 @@ export default function Voice() {
 	const [transcript, setTranscript] = useState("");
 	const [isSpeaking, setIsSpeaking] = useState(false);
 	const db = useSQLiteContext();
+	const eventSourceRef = useRef<EventSource | null>(null);
+
+	const [textStreamInput, setTextStreamInput] = useState(""); // For simulating input
+	const [currentUtterance, setCurrentUtterance] = useState("");
+	const [fullTranscript, setFullTranscript] = useState(""); // To see what's been "sent"
+
+	// useRef for mutable values that don't trigger re-renders on change
+	const textBufferRef = useRef(""); // Accumulates incoming text
+	const sentenceQueueRef = useRef<string[]>([]); // Queue of sentences to speak
+	const flushTimeoutRef = useRef<NodeJS.Timeout>(null); // Timeout for flushing buffer
 
 	const translateXCirc1 = useSharedValue(0);
 	const translateYCirc1 = useSharedValue(20);
@@ -93,41 +113,23 @@ export default function Voice() {
 					duration: DURATION,
 				});
 			} else {
-				scaleCirc1.value = withSpring(1.75, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				scaleCirc1.value = withTiming(1.75, {
+					duration: DURATION - 800,
 				});
-				opacityCirc1.value = withSpring(1, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				opacityCirc1.value = withTiming(1, {
+					duration: DURATION - 800,
 				});
-				scaleCirc2.value = withSpring(1.75, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				scaleCirc2.value = withTiming(1.75, {
+					duration: DURATION - 800,
 				});
-				opacityCirc2.value = withSpring(1, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				opacityCirc2.value = withTiming(1, {
+					duration: DURATION - 800,
 				});
-				scaleCirc3.value = withSpring(1.75, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				scaleCirc3.value = withTiming(1.75, {
+					duration: DURATION - 800,
 				});
-				opacityCirc3.value = withSpring(1, {
-					damping: 20,
-					stiffness: 150,
-					overshootClamping: true,
-					duration: DURATION + 400,
+				opacityCirc3.value = withTiming(1, {
+					duration: DURATION - 800,
 				});
 			}
 		}
@@ -172,25 +174,139 @@ export default function Voice() {
 	useSpeechRecognitionEvent("result", async (event) => {
 		setTranscript(event.results[0]?.transcript);
 		if (event.isFinal) {
-			if (messages.length === 0)
+			if (messages.length === 0) {
 				await createChat(
 					db,
 					event.results[0]?.transcript ?? "New Voice Chat",
 					id,
 				);
+				generateTitle(db, id, event.results[0]?.transcript ?? "New Voice Chat");
+			}
 			await handleSubmit(event.results[0]?.transcript ?? "");
 		}
 	});
 
-	// useSpeechRecognitionEvent("error", (event) => {
-	// 	console.error("error code:", event.error, "error message:", event.message);
-	// });
+	const speakNextInQueue = useCallback(async () => {
+		if (isSpeaking || sentenceQueueRef.current.length === 0) {
+			return;
+		}
+
+		const sentenceToSpeak = sentenceQueueRef.current.shift(); // Get and remove first item
+		console.log("Next sentence to speak:", sentenceToSpeak);
+
+		if (sentenceToSpeak && sentenceToSpeak.trim() !== "") {
+			setIsSpeaking(true);
+			setCurrentUtterance(sentenceToSpeak);
+			// console.log("Speaking:", sentenceToSpeak);
+			Speech.speak(sentenceToSpeak, {
+				// language: 'en-US', // Optional: specify language
+				voice: "en-us-x-tpd-local",
+				onDone: () => {
+					console.log("Done speaking:", sentenceToSpeak);
+					setIsSpeaking(false);
+					// speakNextInQueue(); // Will be triggered by useEffect watching isSpeaking
+				},
+				onError: (error) => {
+					console.error("Speech error:", error);
+					setIsSpeaking(false);
+					// speakNextInQueue(); // Also try to continue on error
+				},
+			});
+		} else if (sentenceQueueRef.current.length > 0) {
+			// If the shifted sentence was empty, try the next one immediately
+			speakNextInQueue();
+		}
+	}, [isSpeaking]); // Recreate if isSpeaking changes (though it's mainly for the initial call)
+
+	// --- Text Processing & Buffering ---
+	const processTextBuffer = useCallback(
+		(isStreamEnding = false) => {
+			let newSentencesFound = false;
+			const buffer = textBufferRef.current;
+			// console.log("Processing text buffer:", buffer);
+
+			// Try to find sentences using regex
+			let match;
+			const matches = [];
+			let lastIndex = 0;
+			while ((match = SENTENCE_SPLIT_REGEX.exec(buffer)) !== null) {
+				// console.log("Last index:", SENTENCE_SPLIT_REGEX.lastIndex);
+				lastIndex = SENTENCE_SPLIT_REGEX.lastIndex;
+				matches.push(match[1].trim());
+			}
+			// console.log("Matches found:", matches);
+
+			if (matches.length > 0) {
+				matches.forEach((sentence) => {
+					if (sentence) {
+						sentenceQueueRef.current.push(sentence);
+						newSentencesFound = true;
+					}
+				});
+				// Update buffer to what's left after the last full match
+				textBufferRef.current = buffer.substring(lastIndex);
+				SENTENCE_SPLIT_REGEX.lastIndex = 0; // Reset regex state
+			}
+
+			// If stream is ending, any remaining buffer is a sentence
+			if (isStreamEnding && textBufferRef.current.trim() !== "") {
+				sentenceQueueRef.current.push(textBufferRef.current.trim());
+				textBufferRef.current = "";
+				newSentencesFound = true;
+			}
+			// Fallback: if buffer is long and no sentence end, split by word count
+			// This is a simpler fallback, could be more sophisticated
+			else if (
+				!newSentencesFound &&
+				!isStreamEnding &&
+				textBufferRef.current.trim().split(/\s+/).length >
+					MAX_WORDS_PER_CHUNK_FALLBACK
+			) {
+				const words = textBufferRef.current.trim().split(/\s+/);
+				const chunk = words.slice(0, MAX_WORDS_PER_CHUNK_FALLBACK).join(" ");
+				sentenceQueueRef.current.push(chunk);
+				textBufferRef.current = words
+					.slice(MAX_WORDS_PER_CHUNK_FALLBACK)
+					.join(" ");
+				newSentencesFound = true;
+			}
+
+			if (newSentencesFound) {
+				clearTimeout(flushTimeoutRef.current ?? undefined); // Clear existing flush timeout
+				flushTimeoutRef.current = null;
+				speakNextInQueue(); // Attempt to speak if not already
+			} else if (
+				textBufferRef.current.length > 0 &&
+				!isStreamEnding &&
+				!flushTimeoutRef.current
+			) {
+				// If there's text in buffer but no sentence found, set a timeout to flush it
+				flushTimeoutRef.current = setTimeout(() => {
+					if (textBufferRef.current.trim() !== "") {
+						console.log(
+							"Flushing buffer due to timeout:",
+							textBufferRef.current.trim(),
+						);
+						sentenceQueueRef.current.push(textBufferRef.current.trim());
+						textBufferRef.current = "";
+						speakNextInQueue();
+					}
+					flushTimeoutRef.current = null;
+				}, BUFFER_FLUSH_TIMEOUT_MS);
+			}
+		},
+		[speakNextInQueue],
+	);
 
 	const handleStart = async () => {
 		const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
 		if (!result.granted) {
 			console.warn("Permissions not granted", result);
 			return;
+		}
+		if (eventSourceRef.current) {
+			eventSourceRef.current.close();
+			eventSourceRef.current = null;
 		}
 		ExpoSpeechRecognitionModule.start({
 			lang: "en-US",
@@ -204,40 +320,100 @@ export default function Voice() {
 		setMessages((prev) => [...prev, msg]);
 		setTranscript("");
 
-		const res = await fetch(generateAPIUrl("/api/customchat"), {
-			method: "POST",
+		if (eventSourceRef.current) {
+			eventSourceRef.current.close();
+		}
+
+		const newEventSource = new EventSource(generateAPIUrl("/api/customchat"), {
 			headers: {
 				"Content-Type": "application/json",
 			},
+			method: "POST",
 			body: JSON.stringify({
-				messages: [...messages, msg],
+				messages: messages.slice(0, -1),
 				input,
 			}),
+			lineEndingCharacter: "\\n",
+		});
+		eventSourceRef.current = newEventSource;
+
+		let result = "";
+
+		newEventSource.addEventListener("message", async (event) => {
+			if (event.data === "[DONE]") {
+				eventSourceRef.current?.close();
+				eventSourceRef.current = null;
+				handleEndOfStream();
+				// setIsSpeaking(true);
+				// Speech.speak(result, {
+				// 	voice: "en-us-x-tpd-local",
+				// 	onDone: () => {
+				// 		setIsSpeaking(false);
+				// 		handleStart();
+				// 	},
+				// 	onStopped: () => {
+				// 		setIsSpeaking(false);
+				// 	},
+				// 	onError: () => {
+				// 		setIsSpeaking(false);
+				// 		handleStart();
+				// 	},
+				// });
+				const aimsg: any = await addMessage(db, id, result, "assistant");
+				setMessages((prev) => [...prev, aimsg]);
+				return;
+			}
+			if (event.data) {
+				result += event.data;
+				handleReceiveTextChunk(event.data);
+				// console.log("Received stream data:", event.data);
+			}
 		});
 
-		if (!res.ok) {
-			console.error("Error:", res.statusText);
-		} else {
-			const airesponse = await res.text();
-			setIsSpeaking(true);
-			Speech.speak(airesponse, {
-				voice: "en-us-x-tpd-local",
-				onDone: () => {
-					setIsSpeaking(false);
-					handleStart();
-				},
-				onStopped: () => {
-					setIsSpeaking(false);
-				},
-				onError: () => {
-					setIsSpeaking(false);
-					handleStart();
-				},
-			});
-			const aimsg: any = await addMessage(db, id, airesponse, "assistant");
-			setMessages((prev) => [...prev, aimsg]);
-		}
+		newEventSource.addEventListener("error", (error) => {
+			console.error("Error in SSE:", error);
+			eventSourceRef.current?.close(); // Close on error
+			eventSourceRef.current = null;
+		});
 	}
+
+	// Effect to process speech queue when not speaking and queue has items
+	useEffect(() => {
+		if (!isSpeaking && sentenceQueueRef.current.length > 0) {
+			speakNextInQueue();
+		}
+	}, [isSpeaking, speakNextInQueue, sentenceQueueRef.current.length]); // Re-run if isSpeaking changes or queue length changes (indirectly)
+
+	// Function to simulate receiving a chunk of text from a stream
+	function handleReceiveTextChunk(chunk: string) {
+		if (!chunk) return;
+		textBufferRef.current += chunk;
+		setFullTranscript((prev) => prev + chunk); // Update full transcript for display
+		processTextBuffer();
+		// console.log("Current text buffer:", textBufferRef.current);
+		// console.log("Current sentence queue:", sentenceQueueRef.current);
+	}
+
+	// Function to signal the end of the stream
+	function handleEndOfStream() {
+		console.log("End of stream signaled.");
+		processTextBuffer(true); // Process remaining buffer as final
+		// The speakNextInQueue will handle speaking the rest.
+	}
+
+	const stopSpeaking = async () => {
+		await Speech.stop();
+		setIsSpeaking(false);
+		sentenceQueueRef.current = []; // Clear the queue
+		textBufferRef.current = ""; // Clear the buffer
+		setCurrentUtterance("");
+		if (flushTimeoutRef.current) {
+			clearTimeout(flushTimeoutRef.current);
+			flushTimeoutRef.current = null;
+		}
+		handleStart();
+		console.log("Speech stopped and queue cleared.");
+	};
 
 	useEffect(() => {
 		async function checkIfExists() {
@@ -254,8 +430,13 @@ export default function Voice() {
 		}
 
 		async function cleanup() {
-			if (recognizing) ExpoSpeechRecognitionModule.abort();
+			ExpoSpeechRecognitionModule.abort();
 			if (await Speech.isSpeakingAsync()) await Speech.stop();
+			// Close the event source on cleanup
+			if (eventSourceRef.current) {
+				eventSourceRef.current.close();
+				eventSourceRef.current = null;
+			}
 		}
 
 		return () => {
@@ -327,7 +508,7 @@ export default function Voice() {
 						/>
 					</AnimatedPressable>
 
-					{isSpeaking && (
+					{(isSpeaking || sentenceQueueRef.current.length > 0) && (
 						<AnimatedPressable
 							key={"stop-button"}
 							entering={FadeInDown}
@@ -342,10 +523,7 @@ export default function Voice() {
 								alignItems: "center",
 								transformOrigin: "bottom",
 							}}
-							onPress={async () => {
-								await Speech.stop();
-								handleStart();
-							}}
+							onPress={stopSpeaking}
 						>
 							<SpeakerXMarkIcon
 								strokeWidth={2}
@@ -385,7 +563,7 @@ export default function Voice() {
 						alignSelf: "center",
 						flexDirection: "row",
 						filter: "blur(20px)",
-						opacity: 0.5,
+						opacity: 0.4,
 						// backgroundColor: "#000",
 						width: "90%",
 						height: 250,

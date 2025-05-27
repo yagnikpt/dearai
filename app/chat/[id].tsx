@@ -3,11 +3,11 @@ import ArrowUpIcon from "@/assets/icons/arrow-up.svg";
 import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
 import SquarePenIcon from "@/assets/icons/square-pen.svg";
 import Spinner from "@/components/ui/Spinner";
-import { addMessage, getConversation } from "@/tools/chat-store";
+import { addMessage, generateTitle, getConversation } from "@/tools/chat-store";
 import type { Conversation } from "@/types";
 import { generateAPIUrl } from "@/utils";
 import { useChat } from "@ai-sdk/react";
-import { defaultChatStore } from "ai";
+import { defaultChatStoreOptions } from "ai";
 import * as Crypto from "expo-crypto";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite"; // Added import
@@ -43,7 +43,7 @@ export default function Chat() {
 	};
 
 	const handleHomePage = () => {
-		router.replace(`/`);
+		router.dismissAll();
 	};
 
 	const {
@@ -54,11 +54,13 @@ export default function Chat() {
 		handleSubmit,
 		handleInputChange,
 	} = useChat({
-		chatStore: defaultChatStore({
+		chatStore: defaultChatStoreOptions({
 			api: generateAPIUrl("/api/chat"),
 			fetch: expoFetch as unknown as typeof globalThis.fetch,
 			generateId: Crypto.randomUUID,
 		}),
+		chatId: id,
+		generateId: Crypto.randomUUID,
 		initialInput: initial,
 		onError: (error) => console.error(error),
 		onFinish: async ({ message }) => {
@@ -80,9 +82,17 @@ export default function Chat() {
 			try {
 				if (initial) {
 					await addMessage(db, id, initial, "user");
-					handleSubmit();
 					const data = await getConversation(db, id);
 					setConversationData(data);
+					setLoading(false);
+					handleSubmit();
+					const newTitle = await generateTitle(db, id, initial);
+					if (newTitle) {
+						setConversationData((prev: any) => ({
+							...prev,
+							title: newTitle,
+						}));
+					}
 				} else {
 					const data = await getConversation(db, id);
 					if (data) {
@@ -119,7 +129,12 @@ export default function Chat() {
 	if (initalError) {
 		return (
 			<SafeAreaView
-				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+				style={{
+					flex: 1,
+					justifyContent: "center",
+					alignItems: "center",
+					backgroundColor: "#fcf5f2",
+				}}
 			>
 				<Text>Conversation not found: {initalError}</Text>
 			</SafeAreaView>
@@ -129,7 +144,12 @@ export default function Chat() {
 	if (error)
 		return (
 			<SafeAreaView
-				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+				style={{
+					flex: 1,
+					justifyContent: "center",
+					alignItems: "center",
+					backgroundColor: "#fcf5f2",
+				}}
 			>
 				<Text>{error.message}</Text>
 			</SafeAreaView>
@@ -138,7 +158,12 @@ export default function Chat() {
 	if (loading) {
 		return (
 			<SafeAreaView
-				style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+				style={{
+					flex: 1,
+					justifyContent: "center",
+					alignItems: "center",
+					backgroundColor: "#fcf5f2",
+				}}
 			>
 				<Spinner size={50} />
 			</SafeAreaView>
@@ -196,7 +221,7 @@ export default function Chat() {
 							{m.role === "user" ? (
 								<Text
 									style={{
-										backgroundColor: "#ddd",
+										backgroundColor: "#f5e4e4",
 										maxWidth: "80%",
 										textAlign: "right",
 										marginLeft: "auto",
@@ -228,7 +253,7 @@ export default function Chat() {
 						marginHorizontal: 20,
 						borderRadius: 32,
 						padding: 8,
-						borderColor: "#ccc",
+						borderColor: "#edc2c2",
 						borderWidth: 1,
 						backgroundColor: "#fff",
 						alignItems: "center",
@@ -256,7 +281,7 @@ export default function Chat() {
 						style={{
 							padding: 8,
 							borderRadius: 16,
-							backgroundColor: "#ddd",
+							backgroundColor: "#f5e4e4",
 						}}
 						onPress={async (e) => {
 							e.persist();
@@ -270,7 +295,7 @@ export default function Chat() {
 						style={{
 							padding: 8,
 							borderRadius: 16,
-							backgroundColor: "#ddd",
+							backgroundColor: "#f5e4e4",
 						}}
 						onPress={() => router.push(`/voice/${id}`)}
 					>

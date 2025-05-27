@@ -1,4 +1,3 @@
-import { useColorScheme } from "@/hooks/useColorScheme";
 import "@/utils/polyfills";
 import {
 	DarkTheme,
@@ -9,6 +8,7 @@ import { Stack } from "expo-router";
 import type * as SQLite from "expo-sqlite";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "react-native";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 
@@ -86,13 +86,14 @@ export default function RootLayout() {
 					<Stack
 						screenOptions={{
 							headerShown: false,
-							contentStyle: { backgroundColor: "#fcf5f2" },
 							animation: "ios_from_right",
 						}}
 					>
 						<Stack.Screen dangerouslySingular singular name="index" />
 						<Stack.Screen
-							options={{ animation: "ios_from_left" }}
+							options={{
+								animation: "ios_from_left",
+							}}
 							name="library"
 						/>
 						<Stack.Screen

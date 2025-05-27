@@ -1,4 +1,3 @@
-import ChatBubbleIcon from "@/assets/icons/chat-bubble.svg";
 import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import {
 	deleteChat,
@@ -21,7 +20,7 @@ import {
 	ActivityIndicator,
 	Alert,
 	Pressable,
-	SafeAreaView,
+	// SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -29,12 +28,21 @@ import {
 	View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+	ChatBubbleOvalLeftEllipsisIcon,
+	ChevronDoubleRightIcon,
+	MagnifyingGlassIcon,
+	XMarkIcon,
+} from "react-native-heroicons/outline";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LibraryScreen() {
 	const [current, setCurrent] = useState<string | null>(null);
 	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [search, setSearch] = useState("");
+	const [showFiltered, setShowFiltered] = useState(false);
 	const router = useRouter();
 	const db = useSQLiteContext();
 	const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -134,13 +142,79 @@ export default function LibraryScreen() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaView style={styles.safeArea}>
-				<BottomSheetModalProvider>
-					<View style={styles.header}>
-						<Text style={styles.headerTitle}>Chats</Text>
+				<View
+					style={{
+						flexDirection: "row",
+						alignItems: "center",
+						gap: 8,
+						paddingVertical: 6,
+						borderBottomWidth: 1,
+						paddingHorizontal: 12,
+						paddingRight: 16,
+						borderBottomColor: "#ddd",
+					}}
+				>
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							backgroundColor: "#dedede",
+							borderRadius: 999,
+							paddingHorizontal: 12,
+							paddingVertical: 4,
+							gap: 8,
+							flex: 1,
+						}}
+					>
+						<MagnifyingGlassIcon
+							strokeWidth={2}
+							color="#666"
+							width={24}
+							height={24}
+						/>
+						<TextInput
+							style={{
+								fontSize: 16,
+								color: "#222",
+								flex: 1,
+								fontFamily: "Geist",
+							}}
+							inputMode="search"
+							placeholder="Search chat history"
+							placeholderTextColor="#999"
+							value={search}
+							onChangeText={(text) => {
+								setSearch(text);
+							}}
+							onSubmitEditing={(e) => {
+								if (e.nativeEvent.text !== "") setShowFiltered(true);
+							}}
+						/>
+						{!!search && (
+							<Pressable
+								style={{ marginLeft: 8 }}
+								onPress={() => {
+									setShowFiltered(false);
+									setSearch("");
+								}}
+							>
+								<XMarkIcon
+									strokeWidth={2}
+									color="#666"
+									width={24}
+									height={24}
+								/>
+							</Pressable>
+						)}
 					</View>
+					<Pressable style={{ marginLeft: 8 }} onPress={() => router.back()}>
+						<ChevronDoubleRightIcon color="#555" width={28} height={28} />
+					</Pressable>
+				</View>
+				<BottomSheetModalProvider>
 					{conversations.length === 0 && !loading ? (
 						<View style={styles.emptyContainer}>
-							<ChatBubbleIcon
+							<ChatBubbleOvalLeftEllipsisIcon
 								width={80}
 								height={80}
 								color={styles.emptyIcon.color}
@@ -150,7 +224,7 @@ export default function LibraryScreen() {
 								Start a new conversation from the home screen!
 							</Text>
 							<Pressable
-								onPress={() => router.replace("/")}
+								onPress={() => router.back()}
 								style={styles.homeButton}
 							>
 								<Text style={styles.homeButtonText}>Go to Home</Text>
@@ -158,26 +232,41 @@ export default function LibraryScreen() {
 						</View>
 					) : (
 						<ScrollView contentContainerStyle={styles.scrollViewContent}>
-							{conversations.map((convo) => (
-								<Pressable
-									key={convo.id}
-									style={styles.conversationItem}
-									onPress={() => handlePressConversation(convo.id)}
-									onLongPress={() => handlePresentPress(convo.id)}
-								>
-									{/* Icon removed */}
-									<View style={styles.conversationDetails}>
-										<Text style={styles.conversationTitle}>
-											{convo.title ||
-												`Chat from ${formatDate(convo.start_time)}`}
-										</Text>
-										<Text style={styles.conversationDate}>
-											{formatDate(convo.start_time)}
-										</Text>
-										{/* Status removed */}
-									</View>
-								</Pressable>
-							))}
+							<Text
+								style={{
+									fontSize: 15,
+									fontFamily: "Geist",
+									paddingHorizontal: -12,
+									marginBottom: 8,
+									color: "#2c3e50",
+								}}
+							>
+								Conversations
+							</Text>
+							{conversations
+								.filter((convo) =>
+									showFiltered
+										? convo.title?.toLowerCase().includes(search.toLowerCase())
+										: true,
+								)
+								.map((convo) => (
+									<Pressable
+										key={convo.id}
+										style={styles.conversationItem}
+										onPress={() => handlePressConversation(convo.id)}
+										onLongPress={() => handlePresentPress(convo.id)}
+									>
+										<View style={styles.conversationDetails}>
+											<Text style={styles.conversationTitle}>
+												{convo.title?.trim() ||
+													`Chat from ${formatDate(convo.start_time)}`}
+											</Text>
+											<Text style={styles.conversationDate}>
+												{formatDate(convo.start_time)}
+											</Text>
+										</View>
+									</Pressable>
+								))}
 						</ScrollView>
 					)}
 				</BottomSheetModalProvider>
@@ -261,30 +350,6 @@ export default function LibraryScreen() {
 								}}
 								autoFocus
 							/>
-							{/* <Pressable
-								style={{
-									backgroundColor: "#3498db",
-									paddingVertical: 12,
-									paddingHorizontal: 24,
-									borderRadius: 8,
-									alignItems: "center",
-									alignSelf: "flex-end",
-								}}
-								onPress={async () => {
-									if (current) await handleRenameChat(current);
-									renameSheetRef.current?.close();
-								}}
-							>
-								<Text
-									style={{
-										color: "#fff",
-										fontSize: 16,
-										fontFamily: "Geist",
-									}}
-								>
-									Rename
-								</Text>
-							</Pressable> */}
 						</BottomSheetView>
 					</BottomSheetModal>
 				</BottomSheetModalProvider>
@@ -297,19 +362,9 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
-		paddingTop: 60,
+		// paddingTop: 10,
 		backgroundColor: "#fcf5f2",
-	},
-	header: {
-		paddingHorizontal: 20,
-		paddingBottom: 10,
-		paddingTop: 5,
-	},
-	headerTitle: {
-		fontSize: 38,
-		fontFamily: "PlayfairDisplay",
-		color: "#2c3e50",
-		letterSpacing: -0.5,
+		// paddingHorizontal: 20,
 	},
 	loadingContainer: {
 		flex: 1,
@@ -371,9 +426,9 @@ const styles = StyleSheet.create({
 	scrollViewContent: {
 		paddingHorizontal: 20,
 		paddingVertical: 5,
+		paddingTop: 32,
 	},
 	conversationItem: {
-		// backgroundColor: "rgba(0, 0, 0, 0.03)", // Very subtle background for items on light mode
 		borderRadius: 8,
 		paddingVertical: 8,
 		paddingHorizontal: 8,
@@ -385,16 +440,15 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	conversationTitle: {
-		fontSize: 17,
-		fontWeight: "bold",
+		fontSize: 18,
 		fontFamily: "Geist",
-		color: "#34495e", // Darker color for light mode
-		marginBottom: 2,
+		color: "#34495e",
+		marginBottom: 4,
+		// backgroundColor: "#000",
 	},
 	conversationDate: {
 		fontSize: 12,
 		fontFamily: "Geist",
-		color: "#7f8c8d", // Medium dark gray for light mode
-		marginBottom: 0,
+		color: "#7f8c8d",
 	},
 });

@@ -1,7 +1,7 @@
-import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
 import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
-import BandageIcon from "@/assets/icons/bandage.svg";
 import BookOpenIcon from "@/assets/icons/book-open.svg";
+import MenuIcon from "@/assets/icons/burger-menu-left.svg";
+import CapsuleIcon from "@/assets/icons/capsule.svg";
 import SpeakerWaveIcon from "@/assets/icons/speaker-wave.svg";
 import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import { createChat } from "@/tools/chat-store";
@@ -34,7 +34,7 @@ const quickActions = [
 	},
 	{
 		title: "Personal therapy",
-		icon: BandageIcon,
+		icon: CapsuleIcon,
 	},
 	{
 		title: "Tell me a story",
@@ -129,7 +129,7 @@ export default function HomeScreen() {
 			<SafeAreaView style={styles.safeArea}>
 				<View style={styles.header}>
 					<Link aria-label="Open Chats" href="/library">
-						<ArrowLeftIcon width={24} height={24} color={"#555"} />
+						<MenuIcon width={24} height={24} color={"#222"} />
 					</Link>
 					<Text
 						style={{
@@ -232,7 +232,12 @@ export default function HomeScreen() {
 												borderRadius: 8,
 											}}
 										>
-											<Icon width={24} height={24} color={"#777"} />
+											<Icon
+												width={24}
+												height={24}
+												color={"#777"}
+												strokeWidth={1.5}
+											/>
 										</View>
 										<Text
 											style={{
@@ -311,7 +316,6 @@ const styles = StyleSheet.create({
 		flexDirection: "row",
 		alignItems: "center",
 		gap: 12,
-		// paddingHorizontal: 8,
 	},
 	center: {
 		gap: 12,
