@@ -19,9 +19,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
+	FlatList,
 	Pressable,
-	// SafeAreaView,
-	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
@@ -121,12 +120,31 @@ export default function LibraryScreen() {
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		if (!dateString) return "N/A";
+	const formatDate = (timestamp: string) => {
+		if (!timestamp) return "N/A";
+
 		try {
-			return format(new Date(dateString), "MMM dd, yyyy");
+			const date = new Date(
+				new Date(timestamp).getTime() +
+					new Date().getTimezoneOffset() * 60000 * -1,
+			);
+			const now = new Date();
+
+			if (format(date, "yyyy-MM-dd") === format(now, "yyyy-MM-dd")) {
+				return format(date, "h:mm a");
+			}
+			if (
+				format(date, "R") === format(now, "R") &&
+				format(date, "w") === format(now, "w")
+			) {
+				return format(date, "EEEE");
+			}
+			if (format(date, "yyyy") === format(now, "yyyy")) {
+				return format(date, "MMM dd");
+			}
+			return format(date, "MMM dd, yyyy");
 		} catch (e) {
-			return dateString;
+			return timestamp;
 		}
 	};
 
@@ -231,43 +249,48 @@ export default function LibraryScreen() {
 							</Pressable>
 						</View>
 					) : (
-						<ScrollView contentContainerStyle={styles.scrollViewContent}>
-							<Text
-								style={{
-									fontSize: 15,
-									fontFamily: "Geist",
-									paddingHorizontal: -12,
-									marginBottom: 8,
-									color: "#2c3e50",
-								}}
-							>
-								Conversations
-							</Text>
-							{conversations
-								.filter((convo) =>
-									showFiltered
-										? convo.title?.toLowerCase().includes(search.toLowerCase())
-										: true,
-								)
-								.map((convo) => (
-									<Pressable
-										key={convo.id}
-										style={styles.conversationItem}
-										onPress={() => handlePressConversation(convo.id)}
-										onLongPress={() => handlePresentPress(convo.id)}
-									>
-										<View style={styles.conversationDetails}>
-											<Text style={styles.conversationTitle}>
-												{convo.title?.trim() ||
-													`Chat from ${formatDate(convo.start_time)}`}
-											</Text>
-											<Text style={styles.conversationDate}>
-												{formatDate(convo.start_time)}
-											</Text>
-										</View>
-									</Pressable>
-								))}
-						</ScrollView>
+						<FlatList
+							data={conversations.filter((convo) =>
+								showFiltered
+									? convo.title?.toLowerCase().includes(search.toLowerCase()) ||
+										convo.start_time
+											.toLowerCase()
+											.includes(search.toLowerCase())
+									: true,
+							)}
+							keyExtractor={(item) => item.id}
+							renderItem={({ item }) => (
+								<Pressable
+									style={styles.conversationItem}
+									onPress={() => handlePressConversation(item.id)}
+									onLongPress={() => handlePresentPress(item.id)}
+								>
+									<View style={styles.conversationDetails}>
+										<Text style={styles.conversationTitle}>
+											{item.title?.trim() ||
+												`Chat from ${formatDate(item.start_time)}`}
+										</Text>
+										<Text style={styles.conversationDate}>
+											{formatDate(item.start_time)}
+										</Text>
+									</View>
+								</Pressable>
+							)}
+							ListHeaderComponent={() => (
+								<Text
+									style={{
+										fontSize: 15,
+										fontFamily: "Geist",
+										paddingHorizontal: -12,
+										marginBottom: 8,
+										color: "#2c3e50",
+									}}
+								>
+									Conversations
+								</Text>
+							)}
+							style={styles.scrollViewContent}
+						/>
 					)}
 				</BottomSheetModalProvider>
 

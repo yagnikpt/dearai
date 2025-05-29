@@ -12,8 +12,9 @@ import * as Crypto from "expo-crypto";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { fetch as expoFetch } from "expo/fetch";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+	Keyboard,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -23,7 +24,10 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
+import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function Chat() {
 	const { id, initial } = useLocalSearchParams<{
@@ -37,6 +41,7 @@ export default function Chat() {
 	const [initalError, setInitialError] = useState<string | null>(null);
 	const db = useSQLiteContext();
 	const router = useRouter();
+	const scrollViewRef = useRef<ScrollView>(null);
 
 	const handleBack = () => {
 		router.back();
@@ -72,6 +77,10 @@ export default function Chat() {
 					}
 				}
 			}
+
+			scrollViewRef.current?.scrollToEnd({
+				animated: true,
+			});
 
 			await addMessage(db, id, content, message.role);
 		},
@@ -110,6 +119,9 @@ export default function Chat() {
 								],
 							}));
 							setMessages(formatedMessages);
+							scrollViewRef.current?.scrollToEnd({
+								animated: true,
+							});
 						}
 					}
 				}
@@ -215,6 +227,7 @@ export default function Chat() {
 						paddingTop: 16,
 						// paddingBottom: 200,
 					}}
+					ref={scrollViewRef}
 				>
 					{messages.map((m) => (
 						<View key={m.id} style={{ marginVertical: 2 }}>
@@ -251,20 +264,27 @@ export default function Chat() {
 						position: "fixed",
 						bottom: 8,
 						marginHorizontal: 20,
-						borderRadius: 32,
+						borderRadius: 24,
 						padding: 8,
-						borderColor: "#edc2c2",
-						borderWidth: 1,
+						borderColor: "#f5e4e4",
+						borderWidth: 1.5,
 						backgroundColor: "#fff",
-						alignItems: "center",
+						alignItems: input.includes("\n") ? "flex-end" : "center",
 						flexDirection: "row",
 						gap: 8,
+						overflow: "hidden",
 					}}
 				>
 					<TextInput
 						multiline
 						placeholderTextColor={"#999"}
-						style={{ backgroundColor: "white", padding: 8, flex: 1 }}
+						style={{
+							backgroundColor: "white",
+							padding: 8,
+							flex: 1,
+							fontFamily: "Geist",
+							fontSize: 16,
+						}}
 						placeholder="Ask anything..."
 						value={input}
 						onChange={(e) =>
@@ -277,30 +297,45 @@ export default function Chat() {
 							} as unknown as React.ChangeEvent<HTMLInputElement>)
 						}
 					/>
-					<Pressable
-						style={{
-							padding: 8,
-							borderRadius: 16,
-							backgroundColor: "#f5e4e4",
-						}}
-						onPress={async (e) => {
-							e.persist();
-							await addMessage(db, id, input, "user");
-							handleSubmit(e);
-						}}
-					>
-						<ArrowUpIcon width={18} height={18} stroke={"#666"} />
-					</Pressable>
-					<Pressable
-						style={{
-							padding: 8,
-							borderRadius: 16,
-							backgroundColor: "#f5e4e4",
-						}}
-						onPress={() => router.push(`/voice/${id}`)}
-					>
-						<AudioLinesIcon width={18} height={18} stroke={"#666"} />
-					</Pressable>
+
+					{input.length ? (
+						<AnimatedPressable
+							entering={FadeInDown}
+							exiting={FadeOutDown}
+							key="send-button"
+							style={{
+								padding: 8,
+								borderRadius: 16,
+								backgroundColor: "#f5e4e4",
+							}}
+							onPress={async (e) => {
+								if (!input.trim()) return;
+								e.persist();
+								handleSubmit(e);
+								Keyboard.dismiss();
+								scrollViewRef.current?.scrollToEnd({
+									animated: true,
+								});
+								await addMessage(db, id, input, "user");
+							}}
+						>
+							<ArrowUpIcon width={18} height={18} stroke={"#666"} />
+						</AnimatedPressable>
+					) : (
+						<AnimatedPressable
+							entering={FadeInDown}
+							exiting={FadeOutDown}
+							key="voice-button"
+							style={{
+								padding: 8,
+								borderRadius: 16,
+								backgroundColor: "#f5e4e4",
+							}}
+							onPress={() => router.push(`/voice/${id}`)}
+						>
+							<AudioLinesIcon width={18} height={18} stroke={"#666"} />
+						</AnimatedPressable>
+					)}
 				</View>
 			</SafeAreaView>
 		</KeyboardAvoidingView>

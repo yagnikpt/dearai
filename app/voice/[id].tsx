@@ -44,8 +44,9 @@ const MAX_WORDS_PER_CHUNK_FALLBACK = 25;
 const BUFFER_FLUSH_TIMEOUT_MS = 2500; // 2.5 seconds
 
 export default function Voice() {
-	const { id } = useLocalSearchParams<{
+	const { id, new: newParam } = useLocalSearchParams<{
 		id: string;
+		new?: string;
 	}>();
 	const router = useRouter();
 	const [messages, setMessages] = useState<Message[]>([]);
@@ -547,9 +548,8 @@ export default function Voice() {
 							alignItems: "center",
 						}}
 						onPress={() => {
-							if (messages.length)
-								router.replace(`/chat/${id}`, { dangerouslySingular: true });
-							else router.replace("/", { dangerouslySingular: true });
+							if (newParam && messages.length) router.replace(`/chat/${id}`);
+							else router.back();
 						}}
 					>
 						<XMarkIcon strokeWidth={2} width={32} height={32} color="#444" />

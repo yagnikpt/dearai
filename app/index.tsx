@@ -254,7 +254,12 @@ export default function HomeScreen() {
 							})}
 						</View>
 					</ScrollView>
-					<View style={styles.inputContainer}>
+					<View
+						style={[
+							styles.inputContainer,
+							{ alignItems: input.includes("\n") ? "flex-end" : "center" },
+						]}
+					>
 						<View
 							style={{
 								borderRadius: 9999,
@@ -287,7 +292,9 @@ export default function HomeScreen() {
 								borderRadius: 16,
 								backgroundColor: "#f5e4e4",
 							}}
-							onPress={() => router.push(`/voice/${Crypto.randomUUID()}`)}
+							onPress={() =>
+								router.push(`/voice/${Crypto.randomUUID()}?new=true`)
+							}
 						>
 							<AudioLinesIcon width={20} height={20} stroke={"#666"} />
 						</Pressable>
@@ -330,13 +337,13 @@ const styles = StyleSheet.create({
 		paddingVertical: 8,
 		marginHorizontal: 2,
 		backgroundColor: "#fff",
-		borderRadius: 9999,
+		borderRadius: 32,
 		gap: 12,
 		boxShadow:
 			"0px 0px 1px 2px rgba(255, 221, 216, 0.25), 0px 0px 10px 10px rgba(255, 221, 216, 0.25)",
 	},
 	input: {
-		flexGrow: 1,
+		flex: 1,
 		fontSize: 16,
 		fontFamily: "Geist",
 		color: "#333",
