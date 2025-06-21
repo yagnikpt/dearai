@@ -1,4 +1,4 @@
-import { GoogleGenAI, createPartFromText } from "@google/genai";
+import { createPartFromText, GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 

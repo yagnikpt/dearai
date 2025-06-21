@@ -1,31 +1,14 @@
+import * as Crypto from "expo-crypto";
+import { LinearGradient } from "expo-linear-gradient";
+import { Link, useRouter } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
 import BookOpenIcon from "@/assets/icons/book-open.svg";
 import MenuIcon from "@/assets/icons/burger-menu-left.svg";
 import CapsuleIcon from "@/assets/icons/capsule.svg";
 import SpeakerWaveIcon from "@/assets/icons/speaker-wave.svg";
-import { useGradualAnimation } from "@/hooks/useGradualAnimation";
-import { createChat } from "@/tools/chat-store";
-import * as Crypto from "expo-crypto";
-import { Image, ImageBackground } from "expo-image";
-import { Link, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite"; // Added import
-import { useState } from "react";
-import {
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
-import { useKeyboardHandler } from "react-native-keyboard-controller";
-import Animated, {
-	Easing,
-	useAnimatedStyle,
-	useSharedValue,
-	withTiming,
-} from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "@/utils/constants/Colors";
 
 const quickActions = [
 	{
@@ -43,11 +26,7 @@ const quickActions = [
 ];
 
 export default function HomeScreen() {
-	const [input, setInput] = useState("");
-	const opacity = useSharedValue(1);
 	const router = useRouter();
-	const db = useSQLiteContext();
-	const { height } = useGradualAnimation();
 
 	const getGreeting = () => {
 		const hour = new Date().getHours();
@@ -60,75 +39,15 @@ export default function HomeScreen() {
 		return "evening";
 	};
 
-	const keyboardPadding = useAnimatedStyle(() => {
-		return {
-			height: height.value,
-		};
-	}, []);
-	const animatedStyles = useAnimatedStyle(() => {
-		return {
-			opacity: opacity.value,
-		};
-	});
-
-	const hideSection = () => {
-		"worklet";
-		opacity.value = withTiming(0, {
-			duration: 200,
-			easing: Easing.out(Easing.cubic),
-		});
-	};
-
-	const showSection = () => {
-		"worklet";
-		opacity.value = withTiming(1, {
-			duration: 200,
-			easing: Easing.in(Easing.cubic),
-		});
-	};
-
-	useKeyboardHandler(
-		{
-			onStart: (e) => {
-				"worklet";
-				if (e.height === 0) showSection();
-				else hideSection();
-			},
-		},
-		[],
-	);
-
-	async function handleSubmit() {
-		try {
-			if (input.length === 0) return;
-			const id = await createChat(db, input.substring(0, 20));
-			router.push({
-				pathname: `/chat/[id]`,
-				params: { initial: input, id },
-			});
-			setInput("");
-		} catch (error) {
-			console.error("Error creating chat:", error);
-		}
-	}
-
 	return (
 		<View style={{ flex: 1 }}>
-			<ImageBackground
-				source={require("../assets/images/bg-4.png")}
-				style={{
-					position: "absolute",
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 0,
-					backgroundColor: "#fcf5f2",
-				}}
-				contentFit="cover"
+			<LinearGradient
+				colors={[Colors.light.background, Colors.light.tintAlt]}
+				style={StyleSheet.absoluteFill}
 			/>
 			<SafeAreaView style={styles.safeArea}>
 				<View style={styles.header}>
-					<Link aria-label="Open Chats" href="/library">
+					<Link aria-label="Open Library" href="/library">
 						<MenuIcon width={24} height={24} color={"#222"} />
 					</Link>
 					<Text
@@ -147,7 +66,7 @@ export default function HomeScreen() {
 						DearAI
 					</Text>
 				</View>
-				<Animated.View style={[styles.center, animatedStyles]}>
+				<View style={styles.center}>
 					<Text
 						style={{
 							fontSize: 36,
@@ -160,43 +79,7 @@ export default function HomeScreen() {
 					>
 						How can i help you this {getGreeting()}?
 					</Text>
-					{/* <View>
-							<Text
-								style={{
-									fontSize: 50,
-									fontWeight: "300",
-									color: "#333",
-									fontFamily: "PlayfairDisplay",
-									letterSpacing: -2,
-								}}
-							>
-								Hello Yagnik
-							</Text>
-							<Text
-								style={{
-									fontSize: 50,
-									fontWeight: "300",
-									fontFamily: "PlayfairDisplay",
-									color: "#333",
-									lineHeight: 60,
-									letterSpacing: -2,
-								}}
-							>
-								How can i help you today?
-							</Text>
-						</View>
-						<Text
-							style={{
-								fontSize: 16,
-								color: "#555",
-								width: "90%",
-								fontFamily: "Geist",
-							}}
-						>
-							I'm here to support your mental wellbeing through conversation or
-							just being a listening ear whenever you need it.
-						</Text> */}
-				</Animated.View>
+				</View>
 				<View style={styles.bottom}>
 					<ScrollView
 						style={{ borderRadius: 12 }}
@@ -216,7 +99,7 @@ export default function HomeScreen() {
 										key={action.title}
 										style={{
 											padding: 8,
-											backgroundColor: "#f5e4e4",
+											backgroundColor: "#fff",
 											borderRadius: 12,
 											flexDirection: "row",
 											alignItems: "center",
@@ -227,7 +110,7 @@ export default function HomeScreen() {
 									>
 										<View
 											style={{
-												backgroundColor: "#fff",
+												backgroundColor: "#FDEDDE",
 												padding: 8,
 												borderRadius: 8,
 											}}
@@ -254,54 +137,36 @@ export default function HomeScreen() {
 							})}
 						</View>
 					</ScrollView>
-					<View
-						style={[
-							styles.inputContainer,
-							{ alignItems: input.includes("\n") ? "flex-end" : "center" },
-						]}
+					<Pressable
+						style={{
+							padding: 16,
+							borderRadius: 16,
+							backgroundColor: "#fff",
+							flexDirection: "row",
+							alignItems: "center",
+							justifyContent: "center",
+							gap: 12,
+							borderWidth: 2,
+							borderColor: Colors.light.tint,
+						}}
+						onPress={() =>
+							router.push(`/voice/${Crypto.randomUUID()}?new=true`)
+						}
 					>
-						<View
+						<Text
 							style={{
-								borderRadius: 9999,
-								boxShadow:
-									"0px 1px 3px 2px rgba(255, 221, 216, 1), 0px 2px 10px 6px rgba(255, 221, 216, 0.75)",
+								textAlign: "center",
+								fontFamily: "Geist",
+								fontWeight: "bold",
+								color: "#444",
 							}}
 						>
-							<Image
-								source={require("../assets/images/gradi3.png")}
-								style={{
-									width: 32,
-									height: 32,
-									borderRadius: 9999,
-								}}
-								contentFit="cover"
-								transition={300}
-							/>
-						</View>
-						<TextInput
-							placeholder="Type your thoughts here..."
-							style={styles.input}
-							placeholderTextColor="#999"
-							value={input}
-							onChangeText={(text) => setInput(text)}
-							onSubmitEditing={handleSubmit}
-						/>
-						<Pressable
-							style={{
-								padding: 8,
-								borderRadius: 16,
-								backgroundColor: "#f5e4e4",
-							}}
-							onPress={() =>
-								router.push(`/voice/${Crypto.randomUUID()}?new=true`)
-							}
-						>
-							<AudioLinesIcon width={20} height={20} stroke={"#666"} />
-						</Pressable>
-					</View>
+							Start Voice Chat
+						</Text>
+						<AudioLinesIcon width={20} height={20} stroke={Colors.light.icon} />
+					</Pressable>
 				</View>
 			</SafeAreaView>
-			<Animated.View style={keyboardPadding} />
 		</View>
 	);
 }
@@ -340,7 +205,7 @@ const styles = StyleSheet.create({
 		borderRadius: 32,
 		gap: 12,
 		boxShadow:
-			"0px 0px 1px 2px rgba(255, 221, 216, 0.25), 0px 0px 10px 10px rgba(255, 221, 216, 0.25)",
+			"0px 0px 1px 2px rgba(254, 229, 206, 0.25), 0px 0px 10px 10px rgba(254, 229, 206, 0.25)",
 	},
 	input: {
 		flex: 1,

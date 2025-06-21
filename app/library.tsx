@@ -1,10 +1,3 @@
-import { useGradualAnimation } from "@/hooks/useGradualAnimation";
-import {
-	deleteChat,
-	getAllConversations,
-	renameChat,
-} from "@/tools/chat-store";
-import type { Conversation } from "@/types";
 import {
 	BottomSheetBackdrop,
 	type BottomSheetBackdropProps,
@@ -14,7 +7,6 @@ import {
 } from "@gorhom/bottom-sheet";
 import { format } from "date-fns";
 import { useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
@@ -35,6 +27,11 @@ import {
 } from "react-native-heroicons/outline";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Spinner from "@/components/ui/Spinner";
+import { useGradualAnimation } from "@/hooks/useGradualAnimation";
+import { deleteChat, getAllConversations, renameChat } from "@/lib/data/chats";
+import type { Conversation } from "@/types";
+import { Colors } from "@/utils/constants/Colors";
 
 export default function LibraryScreen() {
 	const [current, setCurrent] = useState<string | null>(null);
@@ -43,7 +40,6 @@ export default function LibraryScreen() {
 	const [search, setSearch] = useState("");
 	const [showFiltered, setShowFiltered] = useState(false);
 	const router = useRouter();
-	const db = useSQLiteContext();
 	const bottomSheetRef = useRef<BottomSheetModal>(null);
 	const renameSheetRef = useRef<BottomSheetModal>(null);
 	const { height } = useGradualAnimation();
@@ -57,7 +53,7 @@ export default function LibraryScreen() {
 	async function fetchConversations() {
 		try {
 			setLoading(true);
-			const convos = await getAllConversations(db);
+			const convos = await getAllConversations();
 			setConversations(convos as Conversation[]);
 		} catch (error) {
 			console.error("Error fetching conversations:", error);
@@ -76,7 +72,7 @@ export default function LibraryScreen() {
 
 	const handleDeleteChat = async (id: string) => {
 		try {
-			await deleteChat(db, id);
+			await deleteChat(id);
 			setConversations((prevConversations) =>
 				prevConversations.filter((convo) => convo.id !== id),
 			);
@@ -105,7 +101,7 @@ export default function LibraryScreen() {
 
 	const handleRenameChat = async (id: string, newTitle: string) => {
 		try {
-			await renameChat(db, id, newTitle);
+			await renameChat(id, newTitle);
 			setConversations((prevConversations) =>
 				prevConversations.map((convo) =>
 					convo.id === id ? { ...convo, title: newTitle } : convo,
@@ -120,7 +116,7 @@ export default function LibraryScreen() {
 		}
 	};
 
-	const formatDate = (timestamp: string) => {
+	const formatDate = (timestamp: Date) => {
 		if (!timestamp) return "N/A";
 
 		try {
@@ -151,8 +147,7 @@ export default function LibraryScreen() {
 	if (loading) {
 		return (
 			<SafeAreaView style={styles.loadingContainer}>
-				<ActivityIndicator size="large" color={styles.loadingIndicator.color} />
-				<Text style={styles.loadingText}>Loading Chats...</Text>
+				<Spinner label="Loading Chats..." />
 			</SafeAreaView>
 		);
 	}
@@ -253,7 +248,8 @@ export default function LibraryScreen() {
 							data={conversations.filter((convo) =>
 								showFiltered
 									? convo.title?.toLowerCase().includes(search.toLowerCase()) ||
-										convo.start_time
+										convo.createdAt
+											?.toDateString()
 											.toLowerCase()
 											.includes(search.toLowerCase())
 									: true,
@@ -268,10 +264,10 @@ export default function LibraryScreen() {
 									<View style={styles.conversationDetails}>
 										<Text style={styles.conversationTitle}>
 											{item.title?.trim() ||
-												`Chat from ${formatDate(item.start_time)}`}
+												`Chat from ${formatDate(item.createdAt!)}`}
 										</Text>
 										<Text style={styles.conversationDate}>
-											{formatDate(item.start_time)}
+											{formatDate(item.createdAt!).toString()}
 										</Text>
 									</View>
 								</Pressable>
@@ -386,23 +382,12 @@ const styles = StyleSheet.create({
 	safeArea: {
 		flex: 1,
 		// paddingTop: 10,
-		backgroundColor: "#fcf5f2",
+		backgroundColor: Colors.light.background,
 		// paddingHorizontal: 20,
 	},
 	loadingContainer: {
 		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		backgroundColor: "#fcf5f2",
-	},
-	loadingIndicator: {
-		color: "#7f8c8d",
-	},
-	loadingText: {
-		marginTop: 10,
-		fontSize: 18,
-		fontFamily: "Geist",
-		color: "#34495e",
+		backgroundColor: Colors.light.background,
 	},
 	emptyContainer: {
 		flex: 1,

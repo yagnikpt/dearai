@@ -1,28 +1,6 @@
-// import { createGoogleGenerativeAI } from "@ai-sdk/google";
-// import { streamText } from "ai";
-
-// const google = createGoogleGenerativeAI({
-// 	apiKey: process.env.GEMINI_API_KEY,
-// });
-
-// export async function POST(req: Request) {
-// 	const { messages } = await req.json();
-
-// 	const result = streamText({
-// 		model: google("gemini-2.0-flash"),
-// 		messages,
-// 	});
-
-// 	return result.toDataStreamResponse({
-// 		headers: {
-// 			"Content-Type": "application/octet-stream",
-// 			"Content-Encoding": "none",
-// 		},
-// 	});
-// }
-
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { type UIMessage, convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import SystemPrompt from "@/utils/constants/SystemPrompt";
 
 const google = createGoogleGenerativeAI({
 	apiKey: process.env.GEMINI_API_KEY,
@@ -33,6 +11,7 @@ export async function POST(req: Request) {
 
 	const result = streamText({
 		model: google("gemini-2.0-flash"),
+		system: SystemPrompt,
 		messages: convertToModelMessages(messages),
 	});
 

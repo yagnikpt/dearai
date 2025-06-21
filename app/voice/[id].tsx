@@ -1,19 +1,12 @@
-import {
-	addMessage,
-	createChat,
-	generateTitle,
-	getConversation,
-} from "@/tools/chat-store";
-import type { Message } from "@/types";
-import { generateAPIUrl } from "@/utils";
+import { fetch } from "expo/fetch";
 import { ImageBackground } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import {
 	ExpoSpeechRecognitionModule,
 	useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
@@ -30,6 +23,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventSource from "react-native-sse";
+import {
+	addMessage,
+	createChat,
+	generateTitle,
+	getConversation,
+} from "@/lib/data/chats";
+import type { Message } from "@/types";
+import { generateAPIUrl } from "@/utils";
+import { Colors } from "@/utils/constants/Colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const CustomTransition = LinearTransition.springify()
@@ -53,10 +55,7 @@ export default function Voice() {
 	const [recognizing, setRecognizing] = useState(false);
 	const [transcript, setTranscript] = useState("");
 	const [isSpeaking, setIsSpeaking] = useState(false);
-	const db = useSQLiteContext();
-	const eventSourceRef = useRef<EventSource | null>(null);
 
-	const [textStreamInput, setTextStreamInput] = useState(""); // For simulating input
 	const [currentUtterance, setCurrentUtterance] = useState("");
 	const [fullTranscript, setFullTranscript] = useState(""); // To see what's been "sent"
 
@@ -176,12 +175,8 @@ export default function Voice() {
 		setTranscript(event.results[0]?.transcript);
 		if (event.isFinal) {
 			if (messages.length === 0) {
-				await createChat(
-					db,
-					event.results[0]?.transcript ?? "New Voice Chat",
-					id,
-				);
-				generateTitle(db, id, event.results[0]?.transcript ?? "New Voice Chat");
+				await createChat(id, event.results[0]?.transcript ?? "New Voice Chat");
+				generateTitle(id, event.results[0]?.transcript ?? "New Voice Chat");
 			}
 			await handleSubmit(event.results[0]?.transcript ?? "");
 		}
@@ -193,7 +188,7 @@ export default function Voice() {
 		}
 
 		const sentenceToSpeak = sentenceQueueRef.current.shift(); // Get and remove first item
-		console.log("Next sentence to speak:", sentenceToSpeak);
+		// console.log("Next sentence to speak:", sentenceToSpeak);
 
 		if (sentenceToSpeak && sentenceToSpeak.trim() !== "") {
 			setIsSpeaking(true);
@@ -203,7 +198,7 @@ export default function Voice() {
 				// language: 'en-US', // Optional: specify language
 				voice: "en-us-x-tpd-local",
 				onDone: () => {
-					console.log("Done speaking:", sentenceToSpeak);
+					// console.log("Done speaking:", sentenceToSpeak);
 					setIsSpeaking(false);
 					// speakNextInQueue(); // Will be triggered by useEffect watching isSpeaking
 				},
@@ -284,10 +279,10 @@ export default function Voice() {
 				// If there's text in buffer but no sentence found, set a timeout to flush it
 				flushTimeoutRef.current = setTimeout(() => {
 					if (textBufferRef.current.trim() !== "") {
-						console.log(
-							"Flushing buffer due to timeout:",
-							textBufferRef.current.trim(),
-						);
+						// console.log(
+						// 	"Flushing buffer due to timeout:",
+						// 	textBufferRef.current.trim(),
+						// );
 						sentenceQueueRef.current.push(textBufferRef.current.trim());
 						textBufferRef.current = "";
 						speakNextInQueue();
@@ -305,10 +300,6 @@ export default function Voice() {
 			console.warn("Permissions not granted", result);
 			return;
 		}
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
-		}
 		ExpoSpeechRecognitionModule.start({
 			lang: "en-US",
 		});
@@ -317,71 +308,49 @@ export default function Voice() {
 	async function handleSubmit(input: string) {
 		if (!input) return;
 
-		const msg: any = await addMessage(db, id, input, "user");
+		const msg: any = await addMessage(id, input, "user");
 		setMessages((prev) => [...prev, msg]);
 		setTranscript("");
 
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-		}
-
-		const newEventSource = new EventSource(generateAPIUrl("/api/customchat"), {
+		const resp = await fetch(generateAPIUrl("/api/customchat"), {
 			headers: {
 				"Content-Type": "application/json",
+				Accept: "text/event-stream",
 			},
 			method: "POST",
 			body: JSON.stringify({
 				messages: messages.slice(0, -1),
 				input,
 			}),
-			lineEndingCharacter: "\\n",
 		});
-		eventSourceRef.current = newEventSource;
-
+		if (!resp.ok || !resp.body) {
+			console.error("Failed to connect to SSE endpoint:", resp.statusText);
+			return;
+		}
 		let result = "";
+		const reader = resp.body.getReader();
+		const decoder = new TextDecoder();
 
-		newEventSource.addEventListener("message", async (event) => {
-			if (event.data === "[DONE]") {
-				eventSourceRef.current?.close();
-				eventSourceRef.current = null;
-				handleEndOfStream();
-				// setIsSpeaking(true);
-				// Speech.speak(result, {
-				// 	voice: "en-us-x-tpd-local",
-				// 	onDone: () => {
-				// 		setIsSpeaking(false);
-				// 		handleStart();
-				// 	},
-				// 	onStopped: () => {
-				// 		setIsSpeaking(false);
-				// 	},
-				// 	onError: () => {
-				// 		setIsSpeaking(false);
-				// 		handleStart();
-				// 	},
-				// });
-				const aimsg: any = await addMessage(db, id, result, "assistant");
-				setMessages((prev) => [...prev, aimsg]);
-				return;
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) {
+				break;
 			}
-			if (event.data) {
-				result += event.data;
-				handleReceiveTextChunk(event.data);
-				// console.log("Received stream data:", event.data);
-			}
-		});
-
-		newEventSource.addEventListener("error", (error) => {
-			console.error("Error in SSE:", error);
-			eventSourceRef.current?.close(); // Close on error
-			eventSourceRef.current = null;
-		});
+			const chunk = decoder.decode(value, { stream: true });
+			handleReceiveTextChunk(chunk);
+			result += chunk;
+		}
+		result += decoder.decode();
+		handleEndOfStream();
+		const aimsg: any = await addMessage(id, result, "assistant");
+		setMessages((prev) => [...prev, aimsg]);
 	}
 
 	// Effect to process speech queue when not speaking and queue has items
 	useEffect(() => {
 		if (!isSpeaking && sentenceQueueRef.current.length > 0) {
 			speakNextInQueue();
+			setIsSpeaking(true);
 		}
 	}, [isSpeaking, speakNextInQueue, sentenceQueueRef.current.length]); // Re-run if isSpeaking changes or queue length changes (indirectly)
 
@@ -397,7 +366,7 @@ export default function Voice() {
 
 	// Function to signal the end of the stream
 	function handleEndOfStream() {
-		console.log("End of stream signaled.");
+		// console.log("End of stream signaled.");
 		processTextBuffer(true); // Process remaining buffer as final
 		// The speakNextInQueue will handle speaking the rest.
 	}
@@ -413,12 +382,12 @@ export default function Voice() {
 			flushTimeoutRef.current = null;
 		}
 		handleStart();
-		console.log("Speech stopped and queue cleared.");
+		// console.log("Speech stopped and queue cleared.");
 	};
 
 	useEffect(() => {
 		async function checkIfExists() {
-			const exists = await getConversation(db, id);
+			const exists = await getConversation(id);
 			if (exists) {
 				setMessages(exists.messages);
 			}
@@ -433,11 +402,6 @@ export default function Voice() {
 		async function cleanup() {
 			ExpoSpeechRecognitionModule.abort();
 			if (await Speech.isSpeakingAsync()) await Speech.stop();
-			// Close the event source on cleanup
-			if (eventSourceRef.current) {
-				eventSourceRef.current.close();
-				eventSourceRef.current = null;
-			}
 		}
 
 		return () => {
@@ -446,11 +410,16 @@ export default function Voice() {
 	}, []);
 
 	return (
-		<View style={{ flex: 1, alignItems: "center", backgroundColor: "#fcf5f2" }}>
-			<ImageBackground
-				source={require("../../assets/images/bg-4.png")}
-				style={[StyleSheet.absoluteFill]}
-				contentFit="cover"
+		<View
+			style={{
+				flex: 1,
+				alignItems: "center",
+				backgroundColor: Colors.light.background,
+			}}
+		>
+			<LinearGradient
+				colors={[Colors.light.background, Colors.light.tintAlt]}
+				style={StyleSheet.absoluteFill}
 			/>
 
 			<SafeAreaView
@@ -487,7 +456,9 @@ export default function Voice() {
 						style={{
 							backgroundColor: "rgba(255, 255, 255, 0.3)",
 							borderRadius: 9999,
-							boxShadow: recognizing ? "0 0 0 3px #89b4fa" : "none",
+							boxShadow: recognizing
+								? `0 0 0 3px ${Colors.light.tint}`
+								: "none",
 							width: 64,
 							height: 64,
 							justifyContent: "center",

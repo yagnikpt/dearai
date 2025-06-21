@@ -1,17 +1,9 @@
-import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
-import ArrowUpIcon from "@/assets/icons/arrow-up.svg";
-import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
-import SquarePenIcon from "@/assets/icons/square-pen.svg";
-import Spinner from "@/components/ui/Spinner";
-import { addMessage, generateTitle, getConversation } from "@/tools/chat-store";
-import type { Conversation } from "@/types";
-import { generateAPIUrl } from "@/utils";
 import { useChat } from "@ai-sdk/react";
 import { defaultChatStoreOptions } from "ai";
-import * as Crypto from "expo-crypto";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite"; // Added import
 import { fetch as expoFetch } from "expo/fetch";
+import * as Crypto from "expo-crypto";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
 	Keyboard,
@@ -23,9 +15,19 @@ import {
 	View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { colors } from "react-native-keyboard-controller/lib/typescript/components/KeyboardToolbar/colors";
 import Markdown from "react-native-markdown-display";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
+import ArrowUpIcon from "@/assets/icons/arrow-up.svg";
+import AudioLinesIcon from "@/assets/icons/audio-lines.svg";
+import SquarePenIcon from "@/assets/icons/square-pen.svg";
+import Spinner from "@/components/ui/Spinner";
+import { addMessage, generateTitle, getConversation } from "@/lib/data/chats";
+import type { Conversation } from "@/types";
+import { generateAPIUrl } from "@/utils";
+import { Colors } from "@/utils/constants/Colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -39,7 +41,6 @@ export default function Chat() {
 	);
 	const [loading, setLoading] = useState(true);
 	const [initalError, setInitialError] = useState<string | null>(null);
-	const db = useSQLiteContext();
 	const router = useRouter();
 	const scrollViewRef = useRef<ScrollView>(null);
 
@@ -82,7 +83,7 @@ export default function Chat() {
 				animated: true,
 			});
 
-			await addMessage(db, id, content, message.role);
+			await addMessage(id, content, message.role);
 		},
 	});
 
@@ -90,12 +91,12 @@ export default function Chat() {
 		const loadConversation = async () => {
 			try {
 				if (initial) {
-					await addMessage(db, id, initial, "user");
-					const data = await getConversation(db, id);
+					await addMessage(id, initial, "user");
+					const data = await getConversation(id);
 					setConversationData(data);
 					setLoading(false);
 					handleSubmit();
-					const newTitle = await generateTitle(db, id, initial);
+					const newTitle = await generateTitle(id, initial);
 					if (newTitle) {
 						setConversationData((prev: any) => ({
 							...prev,
@@ -103,7 +104,7 @@ export default function Chat() {
 						}));
 					}
 				} else {
-					const data = await getConversation(db, id);
+					const data = await getConversation(id);
 					if (data) {
 						const { messages: initialMessages, ...rest } = data;
 						setConversationData(rest);
@@ -118,7 +119,7 @@ export default function Chat() {
 									},
 								],
 							}));
-							setMessages(formatedMessages);
+							setMessages(formatedMessages as any);
 							scrollViewRef.current?.scrollToEnd({
 								animated: true,
 							});
@@ -145,7 +146,7 @@ export default function Chat() {
 					flex: 1,
 					justifyContent: "center",
 					alignItems: "center",
-					backgroundColor: "#fcf5f2",
+					backgroundColor: Colors.light.background,
 				}}
 			>
 				<Text>Conversation not found: {initalError}</Text>
@@ -160,7 +161,7 @@ export default function Chat() {
 					flex: 1,
 					justifyContent: "center",
 					alignItems: "center",
-					backgroundColor: "#fcf5f2",
+					backgroundColor: Colors.light.background,
 				}}
 			>
 				<Text>{error.message}</Text>
@@ -174,10 +175,10 @@ export default function Chat() {
 					flex: 1,
 					justifyContent: "center",
 					alignItems: "center",
-					backgroundColor: "#fcf5f2",
+					backgroundColor: Colors.light.background,
 				}}
 			>
-				<Spinner size={50} />
+				<Spinner size={50} label="Loading conversation..." />
 			</SafeAreaView>
 		);
 	}
@@ -189,7 +190,11 @@ export default function Chat() {
 			behavior="padding"
 			keyboardVerticalOffset={-20}
 		>
-			<SafeAreaView style={{ flex: 1, backgroundColor: "#fcf5f2" }}>
+			<LinearGradient
+				colors={[Colors.light.background, Colors.light.tintAlt]}
+				style={StyleSheet.absoluteFill}
+			/>
+			<SafeAreaView style={{ flex: 1 }}>
 				<View
 					style={{
 						flexDirection: "row",
@@ -234,7 +239,7 @@ export default function Chat() {
 							{m.role === "user" ? (
 								<Text
 									style={{
-										backgroundColor: "#f5e4e4",
+										backgroundColor: Colors.light.tint,
 										maxWidth: "80%",
 										textAlign: "right",
 										marginLeft: "auto",
@@ -266,7 +271,7 @@ export default function Chat() {
 						marginHorizontal: 20,
 						borderRadius: 24,
 						padding: 8,
-						borderColor: "#f5e4e4",
+						borderColor: Colors.light.tint,
 						borderWidth: 1.5,
 						backgroundColor: "#fff",
 						alignItems: input.includes("\n") ? "flex-end" : "center",
@@ -279,7 +284,7 @@ export default function Chat() {
 						multiline
 						placeholderTextColor={"#999"}
 						style={{
-							backgroundColor: "white",
+							backgroundColor: "#fff",
 							padding: 8,
 							flex: 1,
 							fontFamily: "Geist",
@@ -306,7 +311,7 @@ export default function Chat() {
 							style={{
 								padding: 8,
 								borderRadius: 16,
-								backgroundColor: "#f5e4e4",
+								backgroundColor: Colors.light.tint,
 							}}
 							onPress={async (e) => {
 								if (!input.trim()) return;
@@ -316,7 +321,7 @@ export default function Chat() {
 								scrollViewRef.current?.scrollToEnd({
 									animated: true,
 								});
-								await addMessage(db, id, input, "user");
+								await addMessage(id, input, "user");
 							}}
 						>
 							<ArrowUpIcon width={18} height={18} stroke={"#666"} />
@@ -329,7 +334,7 @@ export default function Chat() {
 							style={{
 								padding: 8,
 								borderRadius: 16,
-								backgroundColor: "#f5e4e4",
+								backgroundColor: Colors.light.tint,
 							}}
 							onPress={() => router.push(`/voice/${id}`)}
 						>
