@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
 		const hash = await Crypto.digestStringAsync(
 			Crypto.CryptoDigestAlgorithm.SHA256,
-			"",
+			`${title}${id}${DEFAULT_USER_ID}`,
 		);
 
 		await db.insert(conversations).values({

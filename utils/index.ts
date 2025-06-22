@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import Constants from "expo-constants";
 
 export const generateAPIUrl = (relativePath: string) => {
@@ -37,4 +38,29 @@ export const generateAPIUrl = (relativePath: string) => {
 	}
 
 	return process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
+};
+
+export const formatDate = (timestamp: Date) => {
+	if (!timestamp) return "N/A";
+
+	try {
+		const date = new Date(new Date(timestamp).getTime());
+		const now = new Date();
+
+		if (format(date, "yyyy-MM-dd") === format(now, "yyyy-MM-dd")) {
+			return format(date, "h:mm a");
+		}
+		if (
+			format(date, "R") === format(now, "R") &&
+			format(date, "w") === format(now, "w")
+		) {
+			return format(date, "EEEE");
+		}
+		if (format(date, "yyyy") === format(now, "yyyy")) {
+			return format(date, "MMM dd");
+		}
+		return format(date, "MMM dd, yyyy");
+	} catch (e) {
+		return timestamp;
+	}
 };

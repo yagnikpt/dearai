@@ -27,6 +27,8 @@ export const conversations = pgTable("conversations", {
 	title: varchar({ length: 255 }).notNull(),
 	contentHash: varchar({ length: 64 }).notNull().unique(),
 	diarySavepointHash: varchar({ length: 64 }).notNull().unique(),
+	messageSavePointId: uuid(),
+	metadata: json(),
 	createdAt: timestamp().defaultNow(),
 	updatedAt: timestamp().defaultNow(),
 });
@@ -49,9 +51,9 @@ export const messages = pgTable("messages", {
 
 export const diaryEntry = pgTable("diary_entry", {
 	id: uuid().defaultRandom().primaryKey(),
-	conversationId: uuid()
+	userId: uuid()
 		.notNull()
-		.references(() => conversations.id, { onDelete: "cascade" }),
+		.references(() => users.id, { onDelete: "cascade" }),
 	date: timestamp().notNull(),
 	summary: text().notNull(),
 	createdAt: timestamp().defaultNow(),
@@ -76,6 +78,7 @@ export const conversationsToDiary = pgTable(
 
 export const userRelations = relations(users, ({ many }) => ({
 	conversations: many(conversations),
+	diaryEntries: many(diaryEntry),
 }));
 
 export const conversationRelations = relations(
@@ -94,6 +97,14 @@ export const messageRelations = relations(messages, ({ one }) => ({
 		fields: [messages.conversationId],
 		references: [conversations.id],
 	}),
+}));
+
+export const diaryEntryRelations = relations(diaryEntry, ({ one, many }) => ({
+	user: one(users, {
+		fields: [diaryEntry.userId],
+		references: [users.id],
+	}),
+	conversations: many(conversationsToDiary),
 }));
 
 export const conversationsToDiaryRelations = relations(

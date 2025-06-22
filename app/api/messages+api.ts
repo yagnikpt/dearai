@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import * as Crypto from "expo-crypto";
 import { db } from "@/lib/db";
-import { messages } from "@/lib/db/schema";
+import { conversations, messages } from "@/lib/db/schema";
 
 // POST endpoint to add a message to a conversation
 export async function POST(request: Request) {
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// TODO: might happen a race condition
+
 		const rec = await db
 			.insert(messages)
 			.values({
@@ -29,16 +32,39 @@ export async function POST(request: Request) {
 				type: type || "text",
 				metadata: metadata || null,
 			})
-			.returning({
-				id: messages.id,
+			.returning();
+
+		if (conversationId && role === "user") {
+			const conversation = await db.query.conversations.findFirst({
+				where: eq(conversations.id, conversationId),
+				with: {
+					messages: {
+						where: eq(messages.role, "user"),
+						orderBy: messages.createdAt,
+					},
+				},
 			});
 
-		const [msg] = await db
-			.select()
-			.from(messages)
-			.where(eq(messages.id, rec[0].id));
+			const existingUserMessage = conversation?.messages || [];
+			if (existingUserMessage.length > 0) {
+				const joined = existingUserMessage.map((msg) => msg.content).join(" ");
+				const hash = await Crypto.digestStringAsync(
+					Crypto.CryptoDigestAlgorithm.SHA256,
+					joined,
+				);
+				if (hash !== conversation?.contentHash) {
+					await db
+						.update(conversations)
+						.set({
+							contentHash: hash,
+							updatedAt: new Date(),
+						})
+						.where(eq(conversations.id, conversationId));
+				}
+			}
+		}
 
-		return Response.json(msg);
+		return Response.json(rec[0]);
 	} catch (error) {
 		console.error("Error adding message:", error);
 		return new Response(JSON.stringify({ error: "Failed to add message" }), {

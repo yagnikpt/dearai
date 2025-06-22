@@ -47,7 +47,7 @@ export default function HomeScreen() {
 			/>
 			<SafeAreaView style={styles.safeArea}>
 				<View style={styles.header}>
-					<Link aria-label="Open Library" href="/library">
+					<Link aria-label="Open Diary" href="/diary">
 						<MenuIcon width={24} height={24} color={"#222"} />
 					</Link>
 					<Text

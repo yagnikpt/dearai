@@ -31,6 +31,7 @@ import Spinner from "@/components/ui/Spinner";
 import { useGradualAnimation } from "@/hooks/useGradualAnimation";
 import { deleteChat, getAllConversations, renameChat } from "@/lib/data/chats";
 import type { Conversation } from "@/types";
+import { formatDate } from "@/utils";
 import { Colors } from "@/utils/constants/Colors";
 
 export default function LibraryScreen() {
@@ -113,34 +114,6 @@ export default function LibraryScreen() {
 		} finally {
 			renameSheetRef.current?.close();
 			bottomSheetRef.current?.close();
-		}
-	};
-
-	const formatDate = (timestamp: Date) => {
-		if (!timestamp) return "N/A";
-
-		try {
-			const date = new Date(
-				new Date(timestamp).getTime() +
-					new Date().getTimezoneOffset() * 60000 * -1,
-			);
-			const now = new Date();
-
-			if (format(date, "yyyy-MM-dd") === format(now, "yyyy-MM-dd")) {
-				return format(date, "h:mm a");
-			}
-			if (
-				format(date, "R") === format(now, "R") &&
-				format(date, "w") === format(now, "w")
-			) {
-				return format(date, "EEEE");
-			}
-			if (format(date, "yyyy") === format(now, "yyyy")) {
-				return format(date, "MMM dd");
-			}
-			return format(date, "MMM dd, yyyy");
-		} catch (e) {
-			return timestamp;
 		}
 	};
 
@@ -452,7 +425,6 @@ const styles = StyleSheet.create({
 		fontFamily: "Geist",
 		color: "#34495e",
 		marginBottom: 4,
-		// backgroundColor: "#000",
 	},
 	conversationDate: {
 		fontSize: 12,

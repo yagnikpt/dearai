@@ -11,7 +11,9 @@ export async function POST(req: Request) {
 	const chat = ai.chats.create({
 		model: "gemini-2.0-flash",
 		config: {
-			systemInstruction: SystemPrompt,
+			systemInstruction:
+				SystemPrompt +
+				"\n\n Do not output content with formatting, such as markdown or HTML. Just output plain text.",
 		},
 		history: [
 			...messages.map((message) => ({

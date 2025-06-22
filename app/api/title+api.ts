@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
 		// For new title generation
 		if (initial) {
-			const res = await fetch(generateAPIUrl("/api/utility"), {
+			const res = await fetch(generateAPIUrl("/api/llm-utility"), {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
