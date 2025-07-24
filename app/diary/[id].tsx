@@ -77,12 +77,15 @@ export default function DiaryPage() {
 						day: "numeric",
 					})}
 				</Text>
-				<Pressable
-					onPress={handleRepopulateEntry}
-					style={{ marginLeft: "auto" }}
-				>
-					<Text>Repopulate</Text>
-				</Pressable>
+				{new Date(entry?.date ?? "").toISOString().split("T")[0] ===
+					new Date().toISOString().split("T")[0] && (
+					<Pressable
+						onPress={handleRepopulateEntry}
+						style={{ marginLeft: "auto" }}
+					>
+						<Text>Repopulate</Text>
+					</Pressable>
+				)}
 			</View>
 			<ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 0 }}>
 				<Text
@@ -115,7 +118,7 @@ export default function DiaryPage() {
 							style={{
 								borderRadius: 8,
 								paddingVertical: 8,
-								paddingHorizontal: 24,
+								paddingHorizontal: 16,
 								marginBottom: 8,
 								flexDirection: "row",
 								alignItems: "center",

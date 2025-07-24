@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Dear AI needs access to your Camera.",
+        "NSMicrophoneUsageDescription": "Dear AI needs access to your Microphone.",
+        "NSSpeechRecognitionUsageDescription": "Allow Dear AI to use speech recognition."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +23,12 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.yagnik_p.dear_ai",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,8 +56,21 @@
         }
       ],
       "expo-sqlite",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Dear AI needs access to your Camera.",
+          "microphonePermissionText": "Dear AI needs access to your Microphone.",
+          "enableMicrophonePermission": true
+        }
+      ],
       "expo-audio",
-      "expo-video",
+      [
+        "react-native-fast-tflite",
+        {
+          "enableCoreMLDelegate": true
+        }
+      ],
       "expo-speech-recognition"
     ],
     "experiments": {
@@ -59,6 +82,12 @@
       "eas": {
         "projectId": "a0b4b6a2-44c6-4f47-a32d-304482ec07cb"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a0b4b6a2-44c6-4f47-a32d-304482ec07cb"
     }
   }
 }

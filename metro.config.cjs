@@ -10,7 +10,7 @@ module.exports = {
   },
   resolver: {
     ...config.resolver,
-    assetExts: config.resolver.assetExts.filter((ext) => ext !== "svg"),
+    assetExts: ["tflite", ...config.resolver.assetExts.filter((ext) => ext !== "svg")],
     sourceExts: [...config.resolver.sourceExts, "svg"]
   }
 };

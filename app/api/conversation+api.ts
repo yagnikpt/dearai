@@ -2,21 +2,19 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { conversations, messages } from "@/lib/db/schema";
 
-// Temporary default user ID until auth is implemented
-const DEFAULT_USER_ID = "a8530ab2-1932-4073-a5bb-054178937967";
-
 // GET endpoint to fetch a specific conversation by ID
 export async function GET(request: Request) {
 	try {
 		const url = new URL(request.url);
 		const id = url.searchParams.get("id");
+		const userId = url.searchParams.get("userId");
 
 		if (!id) {
 			// If no ID is provided, return all conversations
 			const result = await db
 				.select()
 				.from(conversations)
-				.where(eq(conversations.userId, DEFAULT_USER_ID))
+				.where(eq(conversations.userId, userId || ""))
 				.orderBy(desc(conversations.updatedAt));
 
 			return Response.json(result);
@@ -55,6 +53,40 @@ export async function GET(request: Request) {
 		console.error("Error fetching conversation:", error);
 		return new Response(
 			JSON.stringify({ error: "Failed to fetch conversation" }),
+			{
+				status: 500,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}
+}
+
+export async function UPDATE(request: Request) {
+	try {
+		const payload = await request.json();
+		console.log("Update payload:", payload);
+
+		if (!payload) {
+			return new Response(JSON.stringify({ error: "Payload is required" }), {
+				status: 400,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			});
+		}
+
+		await db
+			.update(conversations)
+			.set(payload)
+			.where(eq(conversations.id, payload.id));
+
+		return Response.json({ success: true });
+	} catch (error) {
+		console.error("Error updating conversation:", error);
+		return new Response(
+			JSON.stringify({ error: "Failed to update conversation" }),
 			{
 				status: 500,
 				headers: {

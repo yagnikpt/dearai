@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react"; // Added useRef
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
+	ChatBubbleBottomCenterTextIcon,
 	MicrophoneIcon,
 	SpeakerXMarkIcon,
 	XMarkIcon,
@@ -174,10 +175,6 @@ export default function Voice() {
 	useSpeechRecognitionEvent("result", async (event) => {
 		setTranscript(event.results[0]?.transcript);
 		if (event.isFinal) {
-			if (messages.length === 0) {
-				await createChat(id, event.results[0]?.transcript ?? "New Voice Chat");
-				generateTitle(id, event.results[0]?.transcript ?? "New Voice Chat");
-			}
 			await handleSubmit(event.results[0]?.transcript ?? "");
 		}
 	});
@@ -307,6 +304,11 @@ export default function Voice() {
 
 	async function handleSubmit(input: string) {
 		if (!input) return;
+
+		if (messages.length === 0) {
+			await createChat(id, input ?? "New Voice Chat");
+			generateTitle(id, input ?? "New Voice Chat");
+		}
 
 		const msg: any = await addMessage(id, input, "user");
 		setMessages((prev) => [...prev, msg]);
@@ -525,6 +527,32 @@ export default function Voice() {
 					>
 						<XMarkIcon strokeWidth={2} width={32} height={32} color="#444" />
 					</AnimatedPressable>
+
+					{!newParam && (
+						<AnimatedPressable
+							key={"chat-redirect-button"}
+							entering={FadeInDown}
+							layout={CustomTransition}
+							style={{
+								padding: 16,
+								backgroundColor: "rgba(255, 255, 255, 0.3)",
+								borderRadius: 9999,
+								width: 64,
+								height: 64,
+								justifyContent: "center",
+								alignItems: "center",
+								transformOrigin: "bottom",
+							}}
+							onPress={() => router.replace(`/chat/${id}`)}
+						>
+							<ChatBubbleBottomCenterTextIcon
+								strokeWidth={2}
+								width={32}
+								height={32}
+								color="#444"
+							/>
+						</AnimatedPressable>
+					)}
 				</View>
 
 				<View

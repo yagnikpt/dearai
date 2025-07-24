@@ -1,5 +1,5 @@
 import { createPartFromText, GoogleGenAI } from "@google/genai";
-import { desc, eq, not } from "drizzle-orm";
+import { asc, desc, eq, not } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
 	conversations,
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 						},
 					},
 					where: (c) => not(eq(c.diarySavepointHash, c.contentHash)),
-					orderBy: (c) => desc(c.updatedAt),
+					orderBy: (c) => asc(c.updatedAt),
 				},
 				diaryEntries: {
 					orderBy: (d) => desc(d.date),

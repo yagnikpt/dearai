@@ -1,5 +1,6 @@
 import { useChat } from "@ai-sdk/react";
-import { defaultChatStoreOptions } from "ai";
+import { DefaultChatTransport } from "ai";
+// import { ch } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Crypto from "expo-crypto";
 import { LinearGradient } from "expo-linear-gradient";
@@ -39,6 +40,7 @@ export default function Chat() {
 	const [conversationData, setConversationData] = useState<Conversation | null>(
 		null,
 	);
+	const [input, setInput] = useState(initial || "");
 	const [loading, setLoading] = useState(true);
 	const [initalError, setInitialError] = useState<string | null>(null);
 	const router = useRouter();
@@ -52,22 +54,13 @@ export default function Chat() {
 		router.dismissAll();
 	};
 
-	const {
-		messages,
-		input,
-		error,
-		setMessages,
-		handleSubmit,
-		handleInputChange,
-	} = useChat({
-		chatStore: defaultChatStoreOptions({
+	const { messages, error, setMessages, sendMessage } = useChat({
+		transport: new DefaultChatTransport({
 			api: generateAPIUrl("/api/chat"),
 			fetch: expoFetch as unknown as typeof globalThis.fetch,
-			generateId: Crypto.randomUUID,
 		}),
-		chatId: id,
+		id,
 		generateId: Crypto.randomUUID,
-		initialInput: initial,
 		onError: (error) => console.error(error),
 		onFinish: async ({ message }) => {
 			let content = "";
@@ -95,7 +88,7 @@ export default function Chat() {
 					const data = await getConversation(id);
 					setConversationData(data);
 					setLoading(false);
-					handleSubmit();
+					sendMessage({ text: input });
 					const newTitle = await generateTitle(id, initial);
 					if (newTitle) {
 						setConversationData((prev: any) => ({
@@ -103,6 +96,7 @@ export default function Chat() {
 							title: newTitle,
 						}));
 					}
+					setInput("");
 				} else {
 					const data = await getConversation(id);
 					if (data) {
@@ -292,15 +286,7 @@ export default function Chat() {
 						}}
 						placeholder="Ask anything..."
 						value={input}
-						onChange={(e) =>
-							handleInputChange({
-								...e,
-								target: {
-									...e.target,
-									value: e.nativeEvent.text,
-								},
-							} as unknown as React.ChangeEvent<HTMLInputElement>)
-						}
+						onChange={(e) => setInput(e.nativeEvent.text)}
 					/>
 
 					{input.length ? (
@@ -316,8 +302,9 @@ export default function Chat() {
 							onPress={async (e) => {
 								if (!input.trim()) return;
 								e.persist();
-								handleSubmit(e);
+								sendMessage({ text: input });
 								Keyboard.dismiss();
+								setInput("");
 								scrollViewRef.current?.scrollToEnd({
 									animated: true,
 								});
@@ -350,5 +337,6 @@ export default function Chat() {
 const styles = StyleSheet.create({
 	body: {
 		fontFamily: "Geist",
+		fontSize: 16,
 	},
 });

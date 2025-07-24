@@ -13,7 +13,6 @@ import {
 	Alert,
 	FlatList,
 	Pressable,
-	StyleSheet,
 	Text,
 	TextInput,
 	View,
@@ -54,7 +53,9 @@ export default function LibraryScreen() {
 	async function fetchConversations() {
 		try {
 			setLoading(true);
-			const convos = await getAllConversations();
+			const convos = await getAllConversations(
+				"a8530ab2-1932-4073-a5bb-054178937967",
+			);
 			setConversations(convos as Conversation[]);
 		} catch (error) {
 			console.error("Error fetching conversations:", error);
@@ -119,7 +120,12 @@ export default function LibraryScreen() {
 
 	if (loading) {
 		return (
-			<SafeAreaView style={styles.loadingContainer}>
+			<SafeAreaView
+				style={{
+					flex: 1,
+					backgroundColor: Colors.light.background,
+				}}
+			>
 				<Spinner label="Loading Chats..." />
 			</SafeAreaView>
 		);
@@ -127,7 +133,12 @@ export default function LibraryScreen() {
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
-			<SafeAreaView style={styles.safeArea}>
+			<SafeAreaView
+				style={{
+					flex: 1,
+					backgroundColor: Colors.light.background,
+				}}
+			>
 				<View
 					style={{
 						flexDirection: "row",
@@ -199,21 +210,67 @@ export default function LibraryScreen() {
 				</View>
 				<BottomSheetModalProvider>
 					{conversations.length === 0 && !loading ? (
-						<View style={styles.emptyContainer}>
+						<View
+							style={{
+								flex: 1,
+								justifyContent: "center",
+								alignItems: "center",
+								paddingHorizontal: 20,
+								position: "absolute",
+								top: 0,
+								left: 0,
+								right: 0,
+								bottom: 0,
+							}}
+						>
 							<ChatBubbleOvalLeftEllipsisIcon
 								width={80}
 								height={80}
-								color={styles.emptyIcon.color}
+								color={"#95a5a6"}
 							/>
-							<Text style={styles.emptyText}>No chats yet.</Text>
-							<Text style={styles.emptySubText}>
+							<Text
+								style={{
+									fontSize: 22,
+									fontFamily: "PlayfairDisplay",
+									color: "#7f8c8d",
+									marginTop: 20,
+									marginBottom: 10,
+									textAlign: "center",
+								}}
+							>
+								No chats yet.
+							</Text>
+							<Text
+								style={{
+									fontSize: 16,
+									fontFamily: "Geist",
+									color: "#95a5a6",
+									textAlign: "center",
+									marginBottom: 20,
+								}}
+							>
 								Start a new conversation from the home screen!
 							</Text>
 							<Pressable
 								onPress={() => router.back()}
-								style={styles.homeButton}
+								style={{
+									backgroundColor: "#e0e0e0",
+									paddingVertical: 12,
+									paddingHorizontal: 30,
+									borderRadius: 25,
+									marginTop: 10,
+								}}
 							>
-								<Text style={styles.homeButtonText}>Go to Home</Text>
+								<Text
+									style={{
+										color: "#2c3e50",
+										fontFamily: "Geist",
+										fontSize: 16,
+										fontWeight: "bold",
+									}}
+								>
+									Go to Home
+								</Text>
 							</Pressable>
 						</View>
 					) : (
@@ -221,7 +278,7 @@ export default function LibraryScreen() {
 							data={conversations.filter((convo) =>
 								showFiltered
 									? convo.title?.toLowerCase().includes(search.toLowerCase()) ||
-										convo.createdAt
+										new Date(convo.createdAt!)
 											?.toDateString()
 											.toLowerCase()
 											.includes(search.toLowerCase())
@@ -230,16 +287,36 @@ export default function LibraryScreen() {
 							keyExtractor={(item) => item.id}
 							renderItem={({ item }) => (
 								<Pressable
-									style={styles.conversationItem}
+									style={{
+										borderRadius: 8,
+										paddingVertical: 8,
+										paddingHorizontal: 8,
+										marginBottom: 8,
+										flexDirection: "row",
+										alignItems: "center",
+									}}
 									onPress={() => handlePressConversation(item.id)}
 									onLongPress={() => handlePresentPress(item.id)}
 								>
-									<View style={styles.conversationDetails}>
-										<Text style={styles.conversationTitle}>
+									<View style={{ flex: 1 }}>
+										<Text
+											style={{
+												fontSize: 18,
+												fontFamily: "Geist",
+												color: "#34495e",
+												marginBottom: 4,
+											}}
+										>
 											{item.title?.trim() ||
 												`Chat from ${formatDate(item.createdAt!)}`}
 										</Text>
-										<Text style={styles.conversationDate}>
+										<Text
+											style={{
+												fontSize: 12,
+												fontFamily: "Geist",
+												color: "#7f8c8d",
+											}}
+										>
 											{formatDate(item.createdAt!).toString()}
 										</Text>
 									</View>
@@ -258,7 +335,11 @@ export default function LibraryScreen() {
 									Conversations
 								</Text>
 							)}
-							style={styles.scrollViewContent}
+							style={{
+								paddingHorizontal: 20,
+								paddingVertical: 5,
+								paddingTop: 32,
+							}}
 						/>
 					)}
 				</BottomSheetModalProvider>
@@ -350,85 +431,3 @@ export default function LibraryScreen() {
 		</GestureHandlerRootView>
 	);
 }
-
-const styles = StyleSheet.create({
-	safeArea: {
-		flex: 1,
-		// paddingTop: 10,
-		backgroundColor: Colors.light.background,
-		// paddingHorizontal: 20,
-	},
-	loadingContainer: {
-		flex: 1,
-		backgroundColor: Colors.light.background,
-	},
-	emptyContainer: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-		paddingHorizontal: 20,
-		position: "absolute",
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-	},
-	emptyIcon: {
-		color: "#95a5a6", // Medium gray for icon
-	},
-	emptyText: {
-		fontSize: 22,
-		fontFamily: "PlayfairDisplay",
-		color: "#7f8c8d", // Medium dark gray for light mode
-		marginTop: 20,
-		marginBottom: 10,
-		textAlign: "center",
-	},
-	emptySubText: {
-		fontSize: 16,
-		fontFamily: "Geist",
-		color: "#95a5a6", // Medium gray for light mode
-		textAlign: "center",
-		marginBottom: 20,
-	},
-	homeButton: {
-		backgroundColor: "#e0e0e0", // Slightly darker button for light mode if needed
-		paddingVertical: 12,
-		paddingHorizontal: 30,
-		borderRadius: 25,
-		marginTop: 10,
-	},
-	homeButtonText: {
-		color: "#2c3e50", // Dark text, should be fine
-		fontFamily: "Geist",
-		fontSize: 16,
-		fontWeight: "bold",
-	},
-	scrollViewContent: {
-		paddingHorizontal: 20,
-		paddingVertical: 5,
-		paddingTop: 32,
-	},
-	conversationItem: {
-		borderRadius: 8,
-		paddingVertical: 8,
-		paddingHorizontal: 8,
-		marginBottom: 8,
-		flexDirection: "row",
-		alignItems: "center",
-	},
-	conversationDetails: {
-		flex: 1,
-	},
-	conversationTitle: {
-		fontSize: 18,
-		fontFamily: "Geist",
-		color: "#34495e",
-		marginBottom: 4,
-	},
-	conversationDate: {
-		fontSize: 12,
-		fontFamily: "Geist",
-		color: "#7f8c8d",
-	},
-});
